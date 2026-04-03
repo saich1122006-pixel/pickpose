@@ -1400,3 +1400,122 @@ body {
     from { opacity: 0; transform: translate(-50%, 10px); }
     to { opacity: 1; transform: translate(-50%, 0); }
 }
+
+/* ============== SKELETON LOADING ============== */
+.skeleton {
+    background: linear-gradient(
+        90deg, 
+        rgba(255, 255, 255, 0.03) 25%, 
+        rgba(255, 255, 255, 0.08) 50%, 
+        rgba(255, 255, 255, 0.03) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite linear;
+    border-radius: 4px;
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-card {
+    aspect-ratio: 4 / 5;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.skeleton-img {
+    flex: 1;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.skeleton-footer {
+    height: 48px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.02);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+}
+
+.skeleton-text {
+    height: 12px;
+    width: 60%;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+/* User Submission Upload Styles */
+.drop-zone.dragover {
+    border-color: var(--primary) !important;
+    background: rgba(0, 255, 136, 0.1) !important;
+    box-shadow: 0 0 20px var(--primary-glow);
+}
+
+.upload-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 12px;
+}
+
+.upload-preview-item {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 4/5;
+    border: 1px solid var(--border);
+}
+
+.upload-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.remove-user-preview {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: background 0.2s;
+}
+
+.remove-user-preview:hover {
+    background: #ff4d4d;
+}
+
+/* Auth Card Scrollability Fix */
+.auth-card {
+    max-height: 90vh;
+    overflow-y: auto;
+    margin: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) transparent;
+}
+
+.auth-card::-webkit-scrollbar {
+    width: 6px;
+}
+
+.auth-card::-webkit-scrollbar-thumb {
+    background-color: var(--primary);
+    border-radius: 10px;
+}

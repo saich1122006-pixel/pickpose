@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -17,46 +18,83 @@
     <meta property="og:image" content="images/icon-512x512.png">
     <meta property="og:type" content="website">
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <!-- P Loader -->
-    <div id="pageLoader" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#0a0a0a;transition:opacity 0.4s ease, visibility 0.4s ease;">
+    <div id="pageLoader"
+        style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#0a0a0a;transition:opacity 0.4s ease, visibility 0.4s ease;">
         <div style="text-align:center;">
-            <div id="loaderP" style="font-family:'Inter',sans-serif;font-size:72px;font-weight:800;color:#00ff88;letter-spacing:-3px;animation:pPulse 1.2s ease-in-out infinite;">
+            <div id="loaderP"
+                style="font-family:'Inter',sans-serif;font-size:72px;font-weight:800;color:#00ff88;letter-spacing:-3px;animation:pPulse 1.2s ease-in-out infinite;">
                 P
             </div>
             <div style="margin-top:12px;display:flex;gap:6px;justify-content:center;">
-                <span class="loader-dot" style="width:6px;height:6px;border-radius:50%;background:#00ff88;opacity:0.3;animation:dotBounce 1.2s ease-in-out infinite;"></span>
-                <span class="loader-dot" style="width:6px;height:6px;border-radius:50%;background:#00ff88;opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.2s infinite;"></span>
-                <span class="loader-dot" style="width:6px;height:6px;border-radius:50%;background:#00ff88;opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.4s infinite;"></span>
+                <span class="loader-dot"
+                    style="width:6px;height:6px;border-radius:50%;background:#00ff88;opacity:0.3;animation:dotBounce 1.2s ease-in-out infinite;"></span>
+                <span class="loader-dot"
+                    style="width:6px;height:6px;border-radius:50%;background:#00ff88;opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.2s infinite;"></span>
+                <span class="loader-dot"
+                    style="width:6px;height:6px;border-radius:50%;background:#00ff88;opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.4s infinite;"></span>
             </div>
         </div>
     </div>
 
     <style>
         @keyframes pPulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.15); opacity: 0.6; }
-        }
-        @keyframes dotBounce {
-            0%, 100% { opacity: 0.3; transform: translateY(0); }
-            50% { opacity: 1; transform: translateY(-4px); }
-        }
-        @media (prefers-color-scheme: light) {
-            /* Keep it dark even in light mode to maintain Tech Forward branding */
-            #pageLoader { background: #0a0a0a !important; }
-            #loaderP { color: #00ff88 !important; }
-            .loader-dot { background: #00ff88 !important; }
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.15);
+                opacity: 0.6;
+            }
         }
 
+        @keyframes dotBounce {
+
+            0%,
+            100% {
+                opacity: 0.3;
+                transform: translateY(0);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translateY(-4px);
+            }
+        }
+
+        @media (prefers-color-scheme: light) {
+
+            /* Keep it dark even in light mode to maintain Tech Forward branding */
+            #pageLoader {
+                background: #0a0a0a !important;
+            }
+
+            #loaderP {
+                color: #00ff88 !important;
+            }
+
+            .loader-dot {
+                background: #00ff88 !important;
+            }
+        }
     </style>
 
     <header class="navbar">
         <div class="nav-left">
-            <a href="index.html" class="nav-link" style="font-weight: 700; font-size: 1.3rem; letter-spacing: -0.5px;">PickPose</a>
+            <a href="index.html" class="nav-link"
+                style="font-weight: 700; font-size: 1.3rem; letter-spacing: -0.5px;">PickPose</a>
         </div>
         <div class="nav-center">
             <div class="top-search-bar">
@@ -68,14 +106,21 @@
         <div class="nav-links">
             <button id="btnAbout" class="nav-link-btn">About</button>
             <button id="btnContact" class="nav-link-btn">Contact Us</button>
+            <button id="btnSubmitPose" class="nav-link-btn hidden">Add Pose</button>
         </div>
 
         <div class="nav-right" id="navRightAuth" style="display: flex; align-items: center; gap: 15px;">
             <!-- User Profile Icon dynamically shown when logged in -->
-            <i class="fa-solid fa-circle-user hidden" id="userProfileIcon" style="font-size: 1.25rem; color: #a1a1aa; cursor: pointer;" title="Your Account"></i>
-            <button class="nav-link" id="btnNavLogin" style="background: none; border: none; font-size: 14px; font-weight: 500; cursor: pointer;">Log In</button>
-            <button class="btn-signup" id="btnNavSignup" style="border: none; cursor: pointer; padding: 8px 16px;">Sign Up</button>
-            <button class="nav-link hidden" id="btnNavLogout" style="background: none; border: none; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-muted);">Log Out</button>
+            <i class="fa-solid fa-circle-user hidden" id="userProfileIcon"
+                style="font-size: 1.25rem; color: #a1a1aa; cursor: pointer;" title="Your Account"></i>
+            <button class="nav-link" id="btnNavLogin"
+                style="background: none; border: none; font-size: 14px; font-weight: 500; cursor: pointer;">Log
+                In</button>
+            <button class="btn-signup" id="btnNavSignup" style="border: none; cursor: pointer; padding: 8px 16px;">Sign
+                Up</button>
+            <button class="nav-link hidden" id="btnNavLogout"
+                style="background: none; border: none; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-muted);">Log
+                Out</button>
         </div>
     </header>
 
@@ -103,13 +148,14 @@
                     <button class="filter-btn" data-gender="both">Both/Combine</button>
                 </div>
             </div>
-            
+
             <div class="drawer-section">
                 <h4>Pose Difficulty</h4>
                 <div class="drawer-filter-group" id="difficultyFilterContainer">
                     <button class="filter-btn difficulty-btn active" data-difficulty="all">All Levels</button>
                     <button class="filter-btn difficulty-btn beginner" data-difficulty="beginner">Beginner</button>
-                    <button class="filter-btn difficulty-btn intermediate" data-difficulty="intermediate">Intermediate</button>
+                    <button class="filter-btn difficulty-btn intermediate"
+                        data-difficulty="intermediate">Intermediate</button>
                     <button class="filter-btn difficulty-btn advanced" data-difficulty="advanced">Advanced</button>
                 </div>
             </div>
@@ -141,17 +187,15 @@
                     <div class="about-card">
                         <i class="fa-solid fa-eye"></i>
                         <h3>Vision</h3>
-                        <p>To provide high-quality photography references that fuel creativity for models, photographers, and creators worldwide.</p>
+                        <p>To provide high-quality photography references that fuel creativity for models,
+                            photographers, and creators worldwide.</p>
                     </div>
-                    <div class="about-card">
-                        <i class="fa-solid fa-cube"></i>
-                        <h3>Innovation</h3>
-                        <p>Featuring our unique 360-degree pose viewer, we let you see every angle and detail of professional reference shots.</p>
-                    </div>
+
                     <div class="about-card">
                         <i class="fa-solid fa-microchip"></i>
                         <h3>Tech</h3>
-                        <p>Built with modern web standards, ensuring a lightning-fast and immersive experience on any device.</p>
+                        <p>Built with modern web standards, ensuring a lightning-fast and immersive experience on any
+                            device.</p>
                     </div>
                 </div>
             </div>
@@ -263,20 +307,24 @@
                 <button id="closeAuthModal" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="auth-body" style="min-height: 250px; position: relative;">
-                
+
                 <!-- START MENU -->
                 <div id="authModeSelection" class="auth-step">
                     <p class="auth-desc">Choose an option to continue.</p>
-                    <button id="btnGoogleLogin" class="btn-outline" style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style="width: 18px; height: 18px;">
+                    <button id="btnGoogleLogin" class="btn-outline"
+                        style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
+                            alt="Google" style="width: 18px; height: 18px;">
                         Continue with Google
                     </button>
                     <div style="display: flex; align-items: center; margin-bottom: 15px;">
                         <hr style="flex: 1; border: none; border-top: 1px solid var(--border);">
-                        <span style="padding: 0 10px; color: var(--text-muted); font-size: 12px; font-weight: 500;">OR</span>
+                        <span
+                            style="padding: 0 10px; color: var(--text-muted); font-size: 12px; font-weight: 500;">OR</span>
                         <hr style="flex: 1; border: none; border-top: 1px solid var(--border);">
                     </div>
-                    <button id="btnGoToLogin" class="btn-primary" style="margin-bottom: 15px;">Log In with Email</button>
+                    <button id="btnGoToLogin" class="btn-primary" style="margin-bottom: 15px;">Log In with
+                        Email</button>
                     <button id="btnGoToSignup" class="btn-outline">Create New Account</button>
                 </div>
 
@@ -290,10 +338,14 @@
                     <div class="input-group" style="position: relative;">
                         <i class="fa-solid fa-lock"></i>
                         <input type="password" id="loginPassword" placeholder="Secure Password" minlength="6">
-                        <i class="fa-solid fa-eye pwd-toggle" style="position: absolute; right: 15px; cursor: pointer; color: #8888a0;" title="Show Password"></i>
+                        <i class="fa-solid fa-eye pwd-toggle"
+                            style="position: absolute; right: 15px; cursor: pointer; color: #8888a0;"
+                            title="Show Password"></i>
                     </div>
                     <button id="btnLoginSubmit" class="btn-primary">Log In</button>
-                    <button class="btn-link" id="btnBackToMenuLogin" style="background: none; border: none; color: #8888a0; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px;">&larr; Back to Menu</button>
+                    <button class="btn-link" id="btnBackToMenuLogin"
+                        style="background: none; border: none; color: #8888a0; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px;">&larr;
+                        Back to Menu</button>
                 </div>
 
                 <!-- SIGNUP STEP 1: Email -->
@@ -304,27 +356,36 @@
                         <input type="email" id="signupEmail" placeholder="name@example.com">
                     </div>
                     <button id="btnSignupSendOtp" class="btn-primary">Send OTP Code</button>
-                    <button class="btn-link" id="btnBackToMenuSignup" style="background: none; border: none; color: #8888a0; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px;">&larr; Back to Menu</button>
+                    <button class="btn-link" id="btnBackToMenuSignup"
+                        style="background: none; border: none; color: #8888a0; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px;">&larr;
+                        Back to Menu</button>
                 </div>
 
                 <!-- SIGNUP STEP 2: Verify OTP -->
                 <div id="authSignupStep2" class="auth-step hidden">
                     <p class="auth-desc">Step 2: Enter the 6-digit code sent to your email.</p>
                     <div class="input-group" style="text-align: center;">
-                        <input type="text" id="signupOtp" placeholder="000000" maxlength="6" style="letter-spacing: 5px; text-align: center; font-weight: bold; font-size: 1.2rem; padding-left:0;">
+                        <input type="text" id="signupOtp" placeholder="000000" maxlength="6"
+                            style="letter-spacing: 5px; text-align: center; font-weight: bold; font-size: 1.2rem; padding-left:0;">
                     </div>
                     <button id="btnSignupVerifyOtp" class="btn-primary">Verify Code</button>
-                    <button id="btnResendOtp" style="background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 15px;">Resend Code</button>
+                    <button id="btnResendOtp"
+                        style="background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 15px;">Resend
+                        Code</button>
                 </div>
 
                 <!-- SIGNUP STEP 3: Password -->
                 <div id="authSignupStep3" class="auth-step hidden">
                     <p class="auth-desc">Step 3: Create a secure password.</p>
-                    <p style="font-size: 12px; color: #8888a0; margin-bottom: 15px; text-align: left;"><i class="fa-solid fa-circle-exclamation"></i> Must be MINIMUM 6 chars containing: at least 2 lowercase, 2 uppercase, 2 numbers.</p>
+                    <p style="font-size: 12px; color: #8888a0; margin-bottom: 15px; text-align: left;"><i
+                            class="fa-solid fa-circle-exclamation"></i> Must be MINIMUM 6 chars containing: at least 2
+                        lowercase, 2 uppercase, 2 numbers.</p>
                     <div class="input-group" style="position: relative;">
                         <i class="fa-solid fa-lock"></i>
                         <input type="password" id="signupPassword" placeholder="e.g. Aa1Bb2" minlength="6">
-                        <i class="fa-solid fa-eye pwd-toggle" style="position: absolute; right: 15px; cursor: pointer; color: #8888a0;" title="Show Password"></i>
+                        <i class="fa-solid fa-eye pwd-toggle"
+                            style="position: absolute; right: 15px; cursor: pointer; color: #8888a0;"
+                            title="Show Password"></i>
                     </div>
                     <button id="btnSignupPassword" class="btn-primary">Continue</button>
                 </div>
@@ -339,7 +400,8 @@
                     <button id="btnSignupFinal" class="btn-primary">Complete Signup!</button>
                 </div>
 
-                <div id="authWizardErrorMsg" style="color: red; font-size: 13px; margin-top: 15px; text-align: center;" class="hidden"></div>
+                <div id="authWizardErrorMsg" style="color: red; font-size: 13px; margin-top: 15px; text-align: center;"
+                    class="hidden"></div>
             </div>
         </div>
     </div>
@@ -351,7 +413,7 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
-                .catch(err => console.error('Service Worker registration failed: ', err));
+                    .catch(err => console.error('Service Worker registration failed: ', err));
             });
         }
     </script>
@@ -393,20 +455,122 @@
             div.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#faf9f6;transition:opacity 0.4s ease,visibility 0.4s ease;opacity:0;visibility:hidden;';
             const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             if (isDark) div.style.background = '#0a0a0a';
-            div.innerHTML = `<div style="text-align:center;"><div style="font-family:'Inter',sans-serif;font-size:72px;font-weight:800;color:${isDark?'#faf9f6':'#1a1a1a'};letter-spacing:-3px;animation:pPulse 1.2s ease-in-out infinite;">P</div><div style="margin-top:12px;display:flex;gap:6px;justify-content:center;"><span style="width:6px;height:6px;border-radius:50%;background:${isDark?'#faf9f6':'#1a1a1a'};opacity:0.3;animation:dotBounce 1.2s ease-in-out infinite;"></span><span style="width:6px;height:6px;border-radius:50%;background:${isDark?'#faf9f6':'#1a1a1a'};opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.2s infinite;"></span><span style="width:6px;height:6px;border-radius:50%;background:${isDark?'#faf9f6':'#1a1a1a'};opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.4s infinite;"></span></div></div>`;
+            div.innerHTML = `<div style="text-align:center;"><div style="font-family:'Inter',sans-serif;font-size:72px;font-weight:800;color:${isDark ? '#faf9f6' : '#1a1a1a'};letter-spacing:-3px;animation:pPulse 1.2s ease-in-out infinite;">P</div><div style="margin-top:12px;display:flex;gap:6px;justify-content:center;"><span style="width:6px;height:6px;border-radius:50%;background:${isDark ? '#faf9f6' : '#1a1a1a'};opacity:0.3;animation:dotBounce 1.2s ease-in-out infinite;"></span><span style="width:6px;height:6px;border-radius:50%;background:${isDark ? '#faf9f6' : '#1a1a1a'};opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.2s infinite;"></span><span style="width:6px;height:6px;border-radius:50%;background:${isDark ? '#faf9f6' : '#1a1a1a'};opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.4s infinite;"></span></div></div>`;
             document.body.appendChild(div);
             return div;
         }
     </script>
 
+    <!-- ADD POSE MODAL (FOR USERS) -->
+    <div id="submitPoseModal" class="modal hidden">
+        <div class="modal-bg" id="submitPoseModalBg"></div>
+        <div class="modal-content auth-card" style="max-width: 500px; padding: 25px;">
+            <div class="modal-header">
+                <h3 class="neon-title" style="font-size: 1.2rem;">Add a Pose</h3>
+                <button id="closeSubmitPoseModal" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="auth-desc" style="margin-bottom: 20px;">Share a reference image with the community. Admins will
+                review before publishing.</p>
+
+            <form id="submitPoseForm" class="neon-form">
+                <div class="input-group">
+                    <label>Image Source</label>
+                    <div class="image-source-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button type="button" class="source-tab active" data-source="file" id="btnUserTabFile"
+                            style="flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--primary); font-weight: 600; font-family: var(--font); transition: all 0.2s;">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Upload File
+                        </button>
+                        <button type="button" class="source-tab" data-source="url" id="btnUserTabUrl"
+                            style="flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); background: rgba(0,255,136,0.05); color: var(--primary); font-weight: 600; font-family: var(--font); transition: all 0.2s; opacity: 0.7;">
+                            <i class="fa-solid fa-link"></i> Image URL
+                        </button>
+                    </div>
+
+                    <!-- File Upload Area -->
+                    <div id="userSourceFileArea">
+                        <div class="drop-zone" id="userPoseDropZone"
+                            style="border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(0,255,136,0.02);">
+                            <i class="fa-solid fa-camera-retro"
+                                style="font-size: 2.5rem; color: var(--primary); margin-bottom: 15px; display: block; opacity: 0.8;"></i>
+                            <p style="font-size: 0.95rem; color: var(--text-main); font-weight: 500;">Tap to select or
+                                drag photo</p>
+                            <span
+                                style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 5px;">AI
+                                will automatically crop & center the pose</span>
+                            <input type="file" id="userPoseFileInput" accept="image/*" class="hidden">
+                        </div>
+                        <div id="userPosePreviewGrid" class="upload-preview-grid hidden"
+                            style="margin-top: 15px; display: grid; grid-template-columns: 1fr; gap: 10px;">
+                            <!-- Handled via JS -->
+                        </div>
+                    </div>
+
+                    <!-- URL Input Area -->
+                    <div id="userSourceUrlArea" class="hidden">
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-link"></i>
+                            <input type="url" id="submitPoseUrl" placeholder="https://example.com/image.jpg">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row"
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom: 15px;">
+                    <div class="input-group" style="margin: 0;">
+                        <label>Category</label>
+                        <select id="submitPoseCategory" required
+                            style="width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--surface); color: var(--text);">
+                            <option value="culture">Culture</option>
+                            <option value="fashion">Fashion</option>
+                            <option value="fitness">Fitness</option>
+                            <option value="street">Street</option>
+                            <option value="portrait">Portrait</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin: 0;">
+                        <label>Gender</label>
+                        <select id="submitPoseGender" required
+                            style="width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--surface); color: var(--text);">
+                            <option value="both">Both</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Tags (Comma separated)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-tags"></i>
+                        <input type="text" id="submitPoseTags" placeholder="standing, casual, outdoor" required>
+                    </div>
+                </div>
+
+                <div style="margin-top: 25px;">
+                    <button type="submit" id="btnSubmitPoseConfirm" class="btn-primary" style="width: 100%;">
+                        <span>Add for Review</span>
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+
+                <div id="submitPoseSuccessMsg" class="success-alert hidden" style="margin-top: 15px;">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>Submitted! We will review it soon.</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- EmailJS SDK -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script type="text/javascript">
-        (function(){
+        (function () {
             emailjs.init({
                 publicKey: "xhroC5sVcS5_27jxz",
             });
         })();
     </script>
 </body>
+
 </html>

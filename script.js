@@ -62,6 +62,13 @@ let touchStartY = 0;
 let touchEndX = 0;
 let touchEndY = 0;
 
+// Helper: Trigger subtle vibration on mobile devices
+function triggerHaptic(duration = 15) {
+    if (window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate(duration);
+    }
+}
+
 async function toggleFavorite(poseDocId) {
     if (!isLoggedIn()) {
         document.getElementById('authModal').classList.remove('hidden');
@@ -73,8 +80,10 @@ async function toggleFavorite(poseDocId) {
 
     if (idx > -1) {
         favoritePoseIds.splice(idx, 1);
+        triggerHaptic(10); // Light tap for removing
     } else {
         favoritePoseIds.push(poseDocId);
+        triggerHaptic(20); // Stronger tap for adding
     }
 
     try {
@@ -88,6 +97,23 @@ async function toggleFavorite(poseDocId) {
 }
 
 async function loadPosesData() {
+    // Show skeletons while loading
+    const grid = document.getElementById('posesGrid');
+    if (grid) {
+        grid.innerHTML = '';
+        for (let i = 0; i < 12; i++) {
+            const skel = document.createElement('div');
+            skel.className = 'skeleton-card';
+            skel.innerHTML = `
+                <div class="skeleton-img skeleton"></div>
+                <div class="skeleton-footer">
+                    <div class="skeleton-text skeleton"></div>
+                </div>
+            `;
+            grid.appendChild(skel);
+        }
+    }
+
     let poses = [];
     try {
         const querySnapshot = await getDocs(collection(db, "poses"));
@@ -249,23 +275,210 @@ async function initPickpose() {
         }
 
         if (contactForm) {
-            contactForm.addEventListener('submit', (e) => {
+            contactForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                // Visual feedback for contact submission
+                
                 const btnSubmit = document.getElementById('btnSubmitContact');
+                const btnText = btnSubmit.querySelector('.btn-text');
+                
                 if (btnSubmit) {
                     btnSubmit.disabled = true;
-                    btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Sending...';
+                    if (btnText) btnText.textContent = 'Sending...';
                 }
 
-                setTimeout(() => {
+                try {
+                    const msgData = {
+                        name: document.getElementById('contactName').value,
+                        email: document.getElementById('contactEmail').value,
+                        message: document.getElementById('contactMessage').value,
+                        timestamp: new Date(),
+                        status: 'unread'
+                    };
+
+                    await addDoc(collection(db, "contact_messages"), msgData);
+                    
+                    if (btnSubmit) btnSubmit.classList.add('hidden');
+                    if (contactSuccessMsg) contactSuccessMsg.classList.remove('hidden');
+                    triggerHaptic(20);
+
+                } catch (err) {
+                    console.error("Contact failed:", err);
+                    alert("Message failed to send. Check your connection.");
                     if (btnSubmit) {
-                        btnSubmit.classList.add('hidden');
+                        btnSubmit.disabled = false;
+                        if (btnText) btnText.textContent = 'Send Message';
                     }
-                    if (contactSuccessMsg) {
-                        contactSuccessMsg.classList.remove('hidden');
-                    }
-                }, 1500);
+                }
+            });
+        }
+
+        // --- SUBMIT POSE MODAL (FOR USERS) ---
+        const btnSubmitPose = document.getElementById('btnSubmitPose');
+        const submitPoseModal = document.getElementById('submitPoseModal');
+        const closeSubmitPoseModal = document.getElementById('closeSubmitPoseModal');
+        const submitPoseModalBg = document.getElementById('submitPoseModalBg');
+        const submitPoseForm = document.getElementById('submitPoseForm');
+        const submitPoseSuccessMsg = document.getElementById('submitPoseSuccessMsg');
+
+        // New Submission UI Elements
+        const btnUserTabFile = document.getElementById('btnUserTabFile');
+        const btnUserTabUrl = document.getElementById('btnUserTabUrl');
+        const userSourceFileArea = document.getElementById('userSourceFileArea');
+        const userSourceUrlArea = document.getElementById('userSourceUrlArea');
+        const userPoseDropZone = document.getElementById('userPoseDropZone');
+        const userPoseFileInput = document.getElementById('userPoseFileInput');
+        const userPosePreviewGrid = document.getElementById('userPosePreviewGrid');
+        
+        let userUploadedImageData = null; // Store compressed base64
+
+        if (btnSubmitPose && submitPoseModal) {
+            btnSubmitPose.addEventListener('click', () => {
+                if (!isLoggedIn()) {
+                    window.openAuthModal('authModeSelection');
+                    return;
+                }
+                submitPoseModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            });
+        }
+
+        const closeSubmitModal = () => {
+            submitPoseModal.classList.add('hidden');
+            document.body.style.overflow = '';
+            if (submitPoseForm) submitPoseForm.reset();
+            if (submitPoseSuccessMsg) submitPoseSuccessMsg.classList.add('hidden');
+            userUploadedImageData = null;
+            if (userPosePreviewGrid) userPosePreviewGrid.innerHTML = '';
+            userPosePreviewGrid?.classList.add('hidden');
+            userSourceFileArea?.classList.remove('hidden');
+            userSourceUrlArea?.classList.add('hidden');
+            btnUserTabFile?.classList.add('active');
+            btnUserTabUrl?.classList.remove('active');
+        };
+
+        if (closeSubmitPoseModal) closeSubmitPoseModal.addEventListener('click', closeSubmitModal);
+        if (submitPoseModalBg) submitPoseModalBg.addEventListener('click', closeSubmitModal);
+
+        // Tab Switching Logic
+        btnUserTabFile?.addEventListener('click', () => {
+            userSourceFileArea.classList.remove('hidden');
+            userSourceUrlArea.classList.add('hidden');
+            btnUserTabFile.classList.add('active');
+            btnUserTabFile.style.opacity = "1";
+            btnUserTabUrl.classList.remove('active');
+            btnUserTabUrl.style.opacity = "0.7";
+            document.getElementById('submitPoseUrl').required = false;
+        });
+
+        btnUserTabUrl?.addEventListener('click', () => {
+            userSourceFileArea.classList.add('hidden');
+            userSourceUrlArea.classList.remove('hidden');
+            btnUserTabUrl.classList.add('active');
+            btnUserTabUrl.style.opacity = "1";
+            btnUserTabFile.classList.remove('active');
+            btnUserTabFile.style.opacity = "0.7";
+            document.getElementById('submitPoseUrl').required = true;
+        });
+
+        // File Selection Logic
+        userPoseDropZone?.addEventListener('click', () => userPoseFileInput.click());
+        
+        userPoseDropZone?.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            userPoseDropZone.classList.add('dragover');
+        });
+        
+        userPoseDropZone?.addEventListener('dragleave', () => userPoseDropZone.classList.remove('dragover'));
+        
+        userPoseDropZone?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            userPoseDropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleUserFiles(e.dataTransfer.files);
+        });
+
+        userPoseFileInput?.addEventListener('change', (e) => {
+            if (e.target.files.length) handleUserFiles(e.target.files);
+        });
+
+        async function handleUserFiles(files) {
+            const file = files[0]; // Limit to one for users
+            if (!file.type.startsWith('image/')) return alert("Please select an image file.");
+            
+            userPoseDropZone.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary); margin-bottom: 15px; display: block;"></i><p>Optimizing Photo...</p>';
+            
+            try {
+                userUploadedImageData = await compressImageForUser(file);
+                renderUserPreview(userUploadedImageData);
+                userPoseDropZone.innerHTML = '<i class="fa-solid fa-check-circle" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 15px; display: block;"></i><p>Photo Optimized!</p><span>Tap to change</span>';
+                triggerHaptic(20);
+            } catch (err) {
+                console.error(err);
+                alert("Processing failed. Try another photo.");
+                userPoseDropZone.innerHTML = '<i class="fa-solid fa-camera-retro" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 15px; display: block; opacity: 0.8;"></i><p>Tap to select or drag photo</p>';
+            }
+        }
+
+        function renderUserPreview(data) {
+            userPosePreviewGrid.innerHTML = `
+                <div class="upload-preview-item">
+                    <img src="${data}" alt="Preview">
+                    <button type="button" class="remove-user-preview"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            `;
+            userPosePreviewGrid.classList.remove('hidden');
+            userPosePreviewGrid.querySelector('.remove-user-preview').addEventListener('click', () => {
+                userUploadedImageData = null;
+                userPosePreviewGrid.innerHTML = '';
+                userPosePreviewGrid.classList.add('hidden');
+                userPoseDropZone.innerHTML = '<i class="fa-solid fa-camera-retro" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 15px; display: block; opacity: 0.8;"></i><p>Tap to select or drag photo</p>';
+            });
+        }
+
+        if (submitPoseForm) {
+            submitPoseForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!isLoggedIn()) return;
+
+                const urlVal = document.getElementById('submitPoseUrl').value;
+                if (!userUploadedImageData && !urlVal) return alert("Please upload a file or provide a URL.");
+
+                const btn = document.getElementById('btnSubmitPoseConfirm');
+                const btnText = btn ? btn.querySelector('span') : null;
+                const originalText = btnText ? btnText.textContent : 'Submit';
+
+                if (btn) btn.disabled = true;
+                if (btnText) btnText.textContent = "Submitting...";
+
+                try {
+                    const submission = {
+                        images: [userUploadedImageData || urlVal],
+                        category: document.getElementById('submitPoseCategory').value,
+                        gender: document.getElementById('submitPoseGender').value,
+                        tags: document.getElementById('submitPoseTags').value.split(',').map(t => t.trim()).filter(t => t),
+                        title: "", 
+                        status: "pending",
+                        userEmail: auth.currentUser.email,
+                        uid: auth.currentUser.uid,
+                        timestamp: new Date()
+                    };
+
+                    await addDoc(collection(db, "pending_poses"), submission);
+                    
+                    if (submitPoseSuccessMsg) submitPoseSuccessMsg.classList.remove('hidden');
+                    triggerHaptic(50);
+                    
+                    setTimeout(() => {
+                        closeSubmitModal();
+                        if (btn) btn.disabled = false;
+                        if (btnText) btnText.textContent = originalText;
+                    }, 2000);
+
+                } catch (err) {
+                    console.error("Submission failed:", err);
+                    alert("Failed to submit. Please try again.");
+                    if (btn) btn.disabled = false;
+                    if (btnText) btnText.textContent = originalText;
+                }
             });
         }
     }
@@ -382,9 +595,16 @@ function filterCards() {
             matchGender = mg === activeGender || mg === 'both';
         }
 
-        const tags = pose.tags ? pose.tags.join(' ').toLowerCase() : '';
-        const cat = pose.category ? pose.category.toLowerCase() : '';
-        const matchSearch = !searchQuery || cat.includes(searchQuery) || tags.includes(searchQuery);
+        const tags = (pose.tags || []).join(' ').toLowerCase();
+        const cat = (pose.category || '').toLowerCase();
+        const title = (pose.title || '').toLowerCase();
+        const fullTxt = `${title} ${cat} ${tags}`;
+        
+        let matchSearch = true;
+        if (searchQuery) {
+            const keywords = searchQuery.split(' ').filter(k => k.length > 0);
+            matchSearch = keywords.every(kw => fullTxt.includes(kw));
+        }
 
         let matchDifficulty = true;
         if (activeDifficulty !== 'all') {
@@ -785,11 +1005,13 @@ function updateHeaderAuthUI() {
         // Logout stays hidden until user clicks profile icon (Requested by USER)
         if (btnLogout) btnLogout.classList.add('hidden');
         if (userIcon) userIcon.classList.remove('hidden');
+        if (btnSubmitPose) btnSubmitPose.classList.remove('hidden');
     } else {
         btnLogin.classList.remove('hidden');
         btnSignup.classList.remove('hidden');
         if (btnLogout) btnLogout.classList.add('hidden');
         if (userIcon) userIcon.classList.add('hidden');
+        if (btnSubmitPose) btnSubmitPose.classList.add('hidden');
     }
 }
 
@@ -870,6 +1092,7 @@ function setupModal() {
                     break;
                 case 'copy':
                     copyToClipboard(shareUrl);
+                    triggerHaptic(30);
                     alert("Link copied to clipboard!");
                     break;
             }
@@ -1075,3 +1298,64 @@ document.addEventListener('DOMContentLoaded', () => {
     initPickpose();
     setupModal();
 });
+
+// ============================================================
+// IMAGE PROCESSING UTILITIES (PORTED FROM ADMIN)
+// ============================================================
+const TARGET_ASPECT = 4 / 5;
+
+async function compressImageForUser(file, maxWidth = 1800, quality = 0.94) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = async () => {
+                // 1. Detect faces (simulated for user side if not loaded)
+                const crop = getSmartCropRectForUser(img.width, img.height, []);
+
+                // 2. Scale cropped region
+                let outW = crop.w;
+                let outH = crop.h;
+                if (outW > maxWidth) {
+                    outH = Math.round((outH * maxWidth) / outW);
+                    outW = maxWidth;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = outW;
+                canvas.height = outH;
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, outW, outH);
+
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+        };
+    });
+}
+
+function getSmartCropRectForUser(imgW, imgH, faces) {
+    const imgAspect = imgW / imgH;
+    if (Math.abs(imgAspect - TARGET_ASPECT) < 0.05) {
+        return { x: 0, y: 0, w: imgW, h: imgH };
+    }
+    let cropW, cropH, cropX, cropY;
+    if (imgAspect > TARGET_ASPECT) {
+        cropH = imgH;
+        cropW = Math.round(imgH * TARGET_ASPECT);
+    } else {
+        cropW = imgW;
+        cropH = Math.round(imgW / TARGET_ASPECT);
+    }
+    cropX = Math.round((imgW - cropW) / 2);
+    cropY = Math.round((imgH - cropH) / 2);
+    
+    // Bias toward top third for poses if tall
+    if (imgAspect <= TARGET_ASPECT) {
+        cropY = Math.round((imgH - cropH) * 0.3);
+    }
+    return { x: cropX, y: cropY, w: cropW, h: cropH };
+}

@@ -1,5 +1,5 @@
 import { db, auth } from './firebase-config.js';
-import { collection, getDocs, addDoc, deleteDoc, doc, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, getDocs, getDoc, addDoc, deleteDoc, doc, query, where, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 let adminPoses = [];
@@ -418,8 +418,17 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.getElementById(tab + 'Tab').classList.add('active');
 
-            document.getElementById('pageTitle').textContent =
-                tab === 'manage' ? 'Manage Poses' : 'Add New Pose';
+            const pageTitle = document.getElementById('pageTitle');
+            if (tab === 'manage') pageTitle.textContent = 'Manage Poses';
+            else if (tab === 'add') pageTitle.textContent = 'Add New Pose';
+            else if (tab === 'pending') {
+                pageTitle.textContent = 'Pending Submissions';
+                loadPendingPoses();
+            }
+            else if (tab === 'messages') {
+                pageTitle.textContent = 'Visitor Messages';
+                loadMessages();
+            }
 
             // Close sidebar on mobile
             document.querySelector('.admin-sidebar').classList.remove('open');
@@ -662,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return { x: cropX, y: cropY, w: cropW, h: cropH };
     }
 
-    async function compressImage(file, maxWidth = 1200, quality = 0.85) {
+    async function compressImageForUser(file, maxWidth = 1800, quality = 0.94) {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -1040,3 +1049,191 @@ document.addEventListener('DOMContentLoaded', () => {
         updateAddBtnText();
     }
 });
+// ============================================================
+// MODERATION & MESSAGES LOGIC
+// ============================================================
+
+async function loadPendingPoses() {
+    const grid = document.getElementById('pendingGrid');
+    grid.innerHTML = '<div class="loader-placeholder">Loading submissions...</div>';
+    
+    try {
+        const q = query(collection(db, "pending_poses"), orderBy("timestamp", "desc"));
+        const snap = await getDocs(q);
+        grid.innerHTML = '';
+        
+        if (snap.empty) {
+            grid.innerHTML = '<div class="empty-state">No pending submissions.</div>';
+            return;
+        }
+
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const card = document.createElement('div');
+            card.className = 'admin-card pending';
+            card.innerHTML = `
+                <div class="pending-badge">Pending</div>
+                <div class="admin-card-img"><img src="${data.images[0]}" alt="Pending"></div>
+                <div class="admin-card-info">
+                    <div class="admin-card-title">User: ${data.userEmail || 'Guest'}</div>
+                    <div class="admin-card-meta">${data.category} | ${data.tags.join(', ')}</div>
+                </div>
+                <div class="admin-card-actions">
+                    <button class="btn-approve" data-id="${docSnap.id}">Approve</button>
+                    <button class="btn-delete" data-id="${docSnap.id}">Reject</button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    } catch (err) {
+        console.error("Load Pending failed:", err);
+        if (err.message && err.message.includes("index")) {
+            grid.innerHTML = `<div class="error-state">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>Sorting error: You need to create a Firestore index for this collection. Check the browser console (F12) for the setup link.</p>
+            </div>`;
+        } else {
+            grid.innerHTML = '<div class="error-state">Failed to load submissions.</div>';
+        }
+    }
+}
+
+async function approvePose(docId) {
+    console.log("Approving pose:", docId);
+    if (!confirm("Approve this pose and move it to the public gallery?")) return;
+    
+    try {
+        const ref = doc(db, "pending_poses", docId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+            console.error("Pending pose not found:", docId);
+            return;
+        }
+        
+        const data = snap.data();
+        const finalPose = {
+            images: data.images,
+            category: data.category,
+            gender: data.gender,
+            tags: data.tags,
+            title: data.title || "",
+            difficulty: data.difficulty || "beginner",
+            createdAt: new Date()
+        };
+
+        await addDoc(collection(db, "poses"), finalPose);
+        await deleteDoc(ref);
+        
+        alert("Pose approved and published!");
+        loadPendingPoses();
+    } catch (err) {
+        console.error("Approval failed:", err);
+        alert("Error approving pose.");
+    }
+}
+
+async function rejectPose(docId) {
+    console.log("Rejecting pose:", docId);
+    if (!confirm("Are you sure you want to reject and delete this submission?")) return;
+    try {
+        await deleteDoc(doc(db, "pending_poses", docId));
+        console.log("Pose rejected:", docId);
+        loadPendingPoses();
+    } catch (err) {
+        console.error("Reject failed:", err);
+        alert("Delete failed.");
+    }
+}
+
+async function loadMessages() {
+    const grid = document.getElementById('messagesGrid');
+    grid.innerHTML = '<div class="loader-placeholder">Loading messages...</div>';
+    
+    try {
+        const q = query(collection(db, "contact_messages"), orderBy("timestamp", "desc"));
+        const snap = await getDocs(q);
+        grid.innerHTML = '';
+        
+        if (snap.empty) {
+            grid.innerHTML = '<div class="empty-state">No messages yet.</div>';
+            return;
+        }
+
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const date = data.timestamp ? data.timestamp.toDate().toLocaleString() : 'Just now';
+            const card = document.createElement('div');
+            card.className = 'message-card';
+            card.innerHTML = `
+                <div class="message-header">
+                    <div class="message-sender">
+                        <span class="sender-name">${data.name}</span>
+                        <span class="sender-email">${data.email}</span>
+                    </div>
+                    <span class="message-time">${date}</span>
+                </div>
+                <div class="message-body">${data.message}</div>
+                <div class="message-actions">
+                    <a href="mailto:${data.email}" class="btn-reply"><i class="fa-solid fa-reply"></i> Reply</a>
+                    <button class="btn-delete" data-id="${docSnap.id}"><i class="fa-solid fa-trash"></i> Delete</button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    } catch (err) {
+        console.error("Load Messages failed:", err);
+        if (err.message && err.message.includes("index")) {
+            grid.innerHTML = `<div class="error-state">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>Inbox index missing. Check console for setup link.</p>
+            </div>`;
+        } else {
+            grid.innerHTML = '<div class="error-state">Failed to load messages.</div>';
+        }
+    }
+}
+
+async function deleteMessage(docId) {
+    console.log("Deleting message:", docId);
+    if (!confirm("Delete this message?")) return;
+    try {
+        await deleteDoc(doc(db, "contact_messages", docId));
+        console.log("Message deleted:", docId);
+        loadMessages();
+    } catch (err) {
+        console.error("Delete message failed:", err);
+        alert("Delete failed.");
+    }
+}
+
+// ============================================================
+// EVENT DELEGATION FOR MODERATION
+// ============================================================
+document.getElementById('pendingGrid')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn || !btn.dataset.id) return;
+    
+    const docId = btn.dataset.id;
+    if (btn.classList.contains('btn-approve')) {
+        approvePose(docId);
+    } else if (btn.classList.contains('btn-delete')) {
+        rejectPose(docId);
+    }
+});
+
+document.getElementById('messagesGrid')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn || !btn.dataset.id) return;
+    
+    const docId = btn.dataset.id;
+    if (btn.classList.contains('btn-delete')) {
+        deleteMessage(docId);
+    }
+});
+
+// Attach to window as backup (optional but good for compatibility)
+window.approvePose = approvePose;
+window.rejectPose = rejectPose;
+window.deleteMessage = deleteMessage;
+window.loadPendingPoses = loadPendingPoses;
+window.loadMessages = loadMessages;

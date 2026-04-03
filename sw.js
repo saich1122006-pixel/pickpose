@@ -21,10 +21,32 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // We only want to handle same-origin or specific CDN assets
+  const url = new URL(event.request.url);
+  
+  // Skip cross-origin requests for internal caching (except fonts/font-awesome)
+  if (url.origin !== location.origin && 
+      !url.hostname.includes('gstatic.com') && 
+      !url.hostname.includes('googleapis.com') && 
+      !url.hostname.includes('cdnjs.cloudflare.com')) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        return response || fetch(event.request);
-      })
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.match(event.request).then(cachedResponse => {
+        const fetchedResponse = fetch(event.request).then(networkResponse => {
+          // Only cache successful same-origin responses or specific allowed CDNs
+          if (networkResponse.ok) {
+            cache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        }).catch(() => {
+            // Silently fail if network is down
+        });
+
+        return cachedResponse || fetchedResponse;
+      });
+    })
   );
 });

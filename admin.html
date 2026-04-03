@@ -90,6 +90,14 @@
                     <i class="fa-solid fa-cloud-arrow-up"></i>
                     <span>Add New Pose</span>
                 </a>
+                <a href="#" class="sidebar-link" data-tab="pending">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Pending Poses</span>
+                </a>
+                <a href="#" class="sidebar-link" data-tab="messages">
+                    <i class="fa-solid fa-envelope"></i>
+                    <span>Messages</span>
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <a href="index.html" class="sidebar-link">
@@ -289,6 +297,27 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </section>
+            <!-- Pending Poses Tab -->
+            <section id="pendingTab" class="tab-content">
+                <div class="tab-header">
+                    <h1>Pending Submissions</h1>
+                    <p>Review community contributions before publishing</p>
+                </div>
+                <div id="pendingGrid" class="admin-grid">
+                    <!-- Loaded dynamically -->
+                </div>
+            </section>
+
+            <!-- Messages Tab -->
+            <section id="messagesTab" class="tab-content">
+                <div class="tab-header">
+                    <h1>Visitor Messages</h1>
+                    <p>Read and respond to inquiries from the contact form</p>
+                </div>
+                <div id="messagesGrid" class="messages-list">
+                    <!-- Loaded dynamically -->
                 </div>
             </section>
         </main>
