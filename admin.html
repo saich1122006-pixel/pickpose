@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pickpose | Admin Panel</title>
+
+    <!-- PWA Setup -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="images/icon-512x512.png">
+
+    <!-- SEO & Social Media Open Graph Tags -->
+    <meta name="description" content="Admin Dashboard for managing Pickpose Gallery.">
+    <meta property="og:title" content="Pickpose | Admin">
+    <meta property="og:description" content="Manage Poses gracefully.">
+    <meta property="og:image" content="images/icon-512x512.png">
+    <meta property="og:type" content="website">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <!-- P Loader -->
+    <div id="pageLoader" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#0f0f13;transition:opacity 0.4s ease, visibility 0.4s ease;">
+        <div style="text-align:center;">
+            <div style="font-family:'Inter',sans-serif;font-size:72px;font-weight:800;color:#e8e8ed;letter-spacing:-3px;animation:pPulse 1.2s ease-in-out infinite;">
+                P
+            </div>
+            <div style="margin-top:12px;display:flex;gap:6px;justify-content:center;">
+                <span style="width:6px;height:6px;border-radius:50%;background:#e8e8ed;opacity:0.3;animation:dotBounce 1.2s ease-in-out infinite;"></span>
+                <span style="width:6px;height:6px;border-radius:50%;background:#e8e8ed;opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.2s infinite;"></span>
+                <span style="width:6px;height:6px;border-radius:50%;background:#e8e8ed;opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.4s infinite;"></span>
+            </div>
+        </div>
+    </div>
+    <style>
+        @keyframes pPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.15); opacity: 0.6; }
+        }
+        @keyframes dotBounce {
+            0%, 100% { opacity: 0.3; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(-4px); }
+        }
+    </style>
+
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <div class="login-icon">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h1>Admin Access</h1>
+            <p class="login-subtitle">Enter your credentials to manage Pickpose</p>
+            <form id="loginForm" autocomplete="off">
+                <div class="input-group">
+                    <i class="fa-solid fa-user"></i>
+                    <input type="email" id="loginUser" placeholder="Email Address" required>
+                </div>
+                <div class="input-group">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="loginPass" placeholder="Password" required>
+                </div>
+                <div id="loginError" class="login-error hidden">Invalid credentials. Try again.</div>
+                <button type="submit" class="btn-login">
+                    <span>Sign In</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADMIN DASHBOARD -->
+    <div id="adminDashboard" class="admin-dashboard hidden">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-camera-retro"></i>
+                <span>Pickpose</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="sidebar-link active" data-tab="manage">
+                    <i class="fa-solid fa-images"></i>
+                    <span>Manage Poses</span>
+                </a>
+                <a href="#" class="sidebar-link" data-tab="add">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <span>Add New Pose</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="index.html" class="sidebar-link">
+                    <i class="fa-solid fa-globe"></i>
+                    <span>View Site</span>
+                </a>
+                <a href="#" id="logoutBtn" class="sidebar-link logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Log Out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <!-- Top Bar -->
+            <header class="admin-topbar">
+                <div class="topbar-left">
+                    <button id="menuToggle" class="menu-toggle">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <h2 id="pageTitle">Manage Poses</h2>
+                </div>
+                <div class="topbar-right">
+                    <span class="admin-badge">Admin</span>
+                </div>
+            </header>
+
+            <!-- Manage Tab -->
+            <section id="manageTab" class="tab-content active">
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fa-solid fa-images"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="totalPoses">0</span>
+                            <span class="stat-label">Total Poses</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon male"><i class="fa-solid fa-mars"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="malePoses">0</span>
+                            <span class="stat-label">Male</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon female"><i class="fa-solid fa-venus"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="femalePoses">0</span>
+                            <span class="stat-label">Female</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="manage-header">
+                    <div class="manage-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="adminSearch" placeholder="Search title or tags...">
+                    </div>
+                    <div class="manage-category-filter">
+                        <i class="fa-solid fa-filter"></i>
+                        <select id="adminCategoryFilter">
+                            <option value="all">All Categories</option>
+                        </select>
+                    </div>
+                    <div class="admin-settings-row">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggleGenderFilter">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="settings-label">Enable "Male/Female" Filters for Users</span>
+                    </div>
+                </div>
+
+                <!-- Bulk Action Bar -->
+                <div id="bulkActionBar" class="bulk-action-bar hidden">
+                    <label class="bulk-checkbox-label">
+                        <input type="checkbox" id="selectAllCheckbox">
+                        <span>Select All</span>
+                    </label>
+                    <span id="selectedCount" class="selected-count">0 selected</span>
+                    <button type="button" id="bulkDeleteBtn" class="btn-bulk-delete" disabled>
+                        <i class="fa-solid fa-trash-can"></i> Delete Selected
+                    </button>
+                </div>
+
+                <div id="adminGrid" class="admin-grid"></div>
+            </section>
+
+            <!-- Add Tab -->
+            <section id="addTab" class="tab-content">
+                <div class="add-form-container">
+                    <div class="form-header">
+                        <h3>Upload New Pose</h3>
+                        <p>Fill in the details and upload an image to add a new pose to your gallery.</p>
+                    </div>
+                    <form id="addPoseForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="poseTitle">Title <span class="hint">(optional)</span></label>
+                                <input type="text" id="poseTitle" placeholder="e.g. Temple Dance">
+                            </div>
+                            <div class="form-group">
+                                <label for="poseCategory">Category <span class="hint">(select or type new)</span></label>
+                                <input type="text" id="poseCategory" list="categoryList" placeholder="e.g. culture, festivals" required autocomplete="off">
+                                <datalist id="categoryList"></datalist>
+                            </div>
+                            <div class="form-group full-width" style="margin-top: 5px;">
+                                <label>Person Category <span class="hint">(Male, Female, Couple)</span></label>
+                                <div class="radio-group" id="genderRadioGroup">
+                                    <label class="radio-label"><input type="radio" name="poseGender" value="none" checked> Not Specified</label>
+                                    <label class="radio-label"><input type="radio" name="poseGender" value="male"> Male</label>
+                                    <label class="radio-label"><input type="radio" name="poseGender" value="female"> Female</label>
+                                    <label class="radio-label"><input type="radio" name="poseGender" value="both"> Both / Couple</label>
+                                </div>
+                            </div>
+                            <div class="form-group full-width" style="margin-top: 5px;">
+                                <label>Difficulty Level <span class="hint">(beginner, intermediate, advanced)</span></label>
+                                <div class="radio-group" id="difficultyRadioGroup">
+                                    <label class="radio-label"><input type="radio" name="poseDifficulty" value="beginner" checked> <span class="dot beginner"></span> Beginner</label>
+                                    <label class="radio-label"><input type="radio" name="poseDifficulty" value="intermediate"> <span class="dot intermediate"></span> Intermediate</label>
+                                    <label class="radio-label"><input type="radio" name="poseDifficulty" value="advanced"> <span class="dot advanced"></span> Advanced</label>
+                                </div>
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Pose Attributes <span class="hint">(Select common attributes)</span></label>
+                                <div class="checkbox-grid" id="poseTagsGrid">
+                                    <label class="checkbox-label"><input type="checkbox" value="standing"> Standing</label>
+                                    <label class="checkbox-label"><input type="checkbox" value="sitting"> Sitting</label>
+                                    <label class="checkbox-label"><input type="checkbox" value="walking"> Walking</label>
+                                    <label class="checkbox-label"><input type="checkbox" value="jumping"> Jumping</label>
+                                    <label class="checkbox-label"><input type="checkbox" value="leaning"> Leaning</label>
+                                    <label class="checkbox-label"><input type="checkbox" value="looking back"> Looking Back</label>
+                                    <label class="checkbox-label"><input type="checkbox" value="hand on hip"> Hand on Hip</label>
+                                    <label class="checkbox-label"><input type="checkbox" value="arms crossed"> Arms Crossed</label>
+                                    <label class="checkbox-label"><input type="checkbox" value="hands in pockets"> Hands in Pockets</label>
+                                    <label class="checkbox-label"><input type="checkbox" value="kneeling / squatting"> Kneeling / Squatting</label>
+                                </div>
+                                <div style="margin-top: 10px;">
+                                    <label for="poseCustomTags" style="font-size: 11px;">Additional Custom Tags <span class="hint">(Comma-separated)</span></label>
+                                    <input type="text" id="poseCustomTags" placeholder="e.g. professional, suit, outdoor">
+                                </div>
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Image</label>
+                                <div class="image-source-tabs">
+                                    <button type="button" class="source-tab active" data-source="upload">
+                                        <i class="fa-solid fa-cloud-arrow-up"></i> Upload File
+                                    </button>
+                                    <button type="button" class="source-tab" data-source="url">
+                                        <i class="fa-solid fa-link"></i> Paste URL
+                                    </button>
+                                </div>
+
+                                <!-- Upload Source -->
+                                <div id="uploadSource" class="image-source active">
+                                    <div class="upload-area" id="uploadArea">
+                                        <input type="file" id="poseImage" accept="image/*" multiple hidden>
+                                        <div class="upload-placeholder" id="uploadPlaceholder">
+                                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                                            <p>Click or drag & drop to upload</p>
+                                            <span>Select multiple images at once · PNG, JPG, WEBP up to 10MB each</span>
+                                        </div>
+                                    </div>
+                                    <div id="uploadPreviewGrid" class="upload-preview-grid hidden"></div>
+                                </div>
+
+                                <!-- Paste URL Source -->
+                                <div id="urlSource" class="image-source">
+                                    <div class="url-paste-info">
+                                        <i class="fa-solid fa-lightbulb"></i>
+                                        <span>Copy an image URL from Google Images, Pinterest, or any website</span>
+                                    </div>
+                                    <div class="web-search-bar">
+                                        <i class="fa-solid fa-link"></i>
+                                        <input type="text" id="imageUrlInput" placeholder="Paste image URL here... e.g. https://example.com/image.jpg">
+                                        <button type="button" id="loadUrlBtn" class="btn-search">Load</button>
+                                    </div>
+                                    <div id="urlPreviewContainer" class="url-preview-container hidden">
+                                        <img id="urlPreview" class="upload-preview" alt="Preview">
+                                        <div class="url-status">
+                                            <i class="fa-solid fa-check-circle"></i> Image loaded successfully
+                                        </div>
+                                    </div>
+                                    <div id="urlError" class="url-error hidden">
+                                        <i class="fa-solid fa-circle-exclamation"></i>
+                                        <span>Could not load image. Check the URL and try again.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" id="resetFormBtn" class="btn-secondary">Reset</button>
+                            <button type="submit" class="btn-primary">
+                                <i class="fa-solid fa-plus"></i>
+                                <span id="addBtnText">Add Pose</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="delete-modal hidden">
+        <div class="delete-modal-bg"></div>
+        <div class="delete-modal-card">
+            <div class="delete-icon">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3>Delete Pose?</h3>
+            <p>This action cannot be undone. The pose will be permanently removed from your gallery.</p>
+            <div class="delete-actions">
+                <button id="cancelDelete" class="btn-secondary">Cancel</button>
+                <button id="confirmDelete" class="btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Pose Modal (Tags Only for now) -->
+    <div id="editModal" class="delete-modal hidden">
+        <div class="delete-modal-bg" id="editModalBg"></div>
+        <div class="delete-modal-card">
+            <div class="delete-icon" style="background: rgba(108, 92, 231, 0.15); color: var(--admin-accent);">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </div>
+            <h3>Edit Pose Tags</h3>
+            <p style="margin-bottom: 20px;">Manage the search keywords for this pose below.</p>
+            <div class="form-group" style="text-align: left;">
+                <label for="editPoseTags">Tags <span class="hint">(Comma-separated)</span></label>
+                <input type="text" id="editPoseTags" style="margin-top: 8px;" placeholder="e.g. standing, outdoor, professional">
+            </div>
+            <div class="delete-actions" style="margin-top: 24px;">
+                <button id="cancelEdit" class="btn-secondary">Cancel</button>
+                <button id="confirmEdit" class="btn-primary" style="padding: 12px 24px;">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast hidden">
+        <i class="fa-solid fa-check-circle"></i>
+        <span id="toastMsg"></span>
+    </div>
+
+
+    <script type="module" src="admin.js"></script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                .catch(err => console.error('Service Worker registration failed: ', err));
+            });
+        }
+    </script>
+    <!-- Page Loader & Navigation Transition -->
+    <script>
+        function hideLoader() {
+            const loader = document.getElementById('pageLoader');
+            if (loader && loader.style.opacity !== '0') {
+                loader.style.opacity = '0';
+                loader.style.visibility = 'hidden';
+                setTimeout(() => loader.remove(), 400);
+            }
+        }
+
+        // Hide as soon as DOM is ready
+        document.addEventListener('DOMContentLoaded', () => setTimeout(hideLoader, 500));
+        // Also hide on full load
+        window.addEventListener('load', () => setTimeout(hideLoader, 200));
+        // Failsafe: always hide after 3 seconds no matter what
+        setTimeout(hideLoader, 3000);
+
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a[href]');
+            if (!link) return;
+            const href = link.getAttribute('href');
+            if (!href || href === '#' || href.startsWith('#') || href.startsWith('javascript') || href.startsWith('mailto')) return;
+            if (link.target === '_blank') return;
+            // Skip sidebar tab links
+            if (link.dataset && link.dataset.tab) return;
+            e.preventDefault();
+            const loader = document.getElementById('pageLoader') || createLoader();
+            loader.style.opacity = '1';
+            loader.style.visibility = 'visible';
+            setTimeout(() => { window.location.href = href; }, 350);
+        });
+
+        function createLoader() {
+            const div = document.createElement('div');
+            div.id = 'pageLoader';
+            div.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#0f0f13;transition:opacity 0.4s ease,visibility 0.4s ease;opacity:0;visibility:hidden;';
+            div.innerHTML = `<div style="text-align:center;"><div style="font-family:'Inter',sans-serif;font-size:72px;font-weight:800;color:#e8e8ed;letter-spacing:-3px;animation:pPulse 1.2s ease-in-out infinite;">P</div><div style="margin-top:12px;display:flex;gap:6px;justify-content:center;"><span style="width:6px;height:6px;border-radius:50%;background:#e8e8ed;opacity:0.3;animation:dotBounce 1.2s ease-in-out infinite;"></span><span style="width:6px;height:6px;border-radius:50%;background:#e8e8ed;opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.2s infinite;"></span><span style="width:6px;height:6px;border-radius:50%;background:#e8e8ed;opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.4s infinite;"></span></div></div>`;
+            document.body.appendChild(div);
+            return div;
+        }
+    </script>
+</body>
+</html>

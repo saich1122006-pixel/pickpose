@@ -1,0 +1,16 @@
+{
+  "name": "Pickpose Gallery",
+  "short_name": "Pickpose",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0e0e15",
+  "theme_color": "#2563eb",
+  "description": "A curated AI photography pose gallery.",
+  "icons": [
+    {
+      "src": "images/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

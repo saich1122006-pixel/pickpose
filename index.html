@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pickpose | Albums</title>
+
+    <!-- PWA Setup -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00ff88">
+    <link rel="apple-touch-icon" href="images/icon-512x512.png">
+
+    <!-- SEO & Social Media Open Graph Tags -->
+    <meta name="description" content="A curated gallery of modern, stylish, and cultural photography poses.">
+    <meta property="og:title" content="Pickpose | Albums">
+    <meta property="og:description" content="A curated gallery of modern, stylish, and cultural photography poses.">
+    <meta property="og:image" content="images/icon-512x512.png">
+    <meta property="og:type" content="website">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- P Loader -->
+    <div id="pageLoader" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#0a0a0a;transition:opacity 0.4s ease, visibility 0.4s ease;">
+        <div style="text-align:center;">
+            <div id="loaderP" style="font-family:'Inter',sans-serif;font-size:72px;font-weight:800;color:#00ff88;letter-spacing:-3px;animation:pPulse 1.2s ease-in-out infinite;">
+                P
+            </div>
+            <div style="margin-top:12px;display:flex;gap:6px;justify-content:center;">
+                <span class="loader-dot" style="width:6px;height:6px;border-radius:50%;background:#00ff88;opacity:0.3;animation:dotBounce 1.2s ease-in-out infinite;"></span>
+                <span class="loader-dot" style="width:6px;height:6px;border-radius:50%;background:#00ff88;opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.2s infinite;"></span>
+                <span class="loader-dot" style="width:6px;height:6px;border-radius:50%;background:#00ff88;opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.4s infinite;"></span>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes pPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.15); opacity: 0.6; }
+        }
+        @keyframes dotBounce {
+            0%, 100% { opacity: 0.3; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(-4px); }
+        }
+        @media (prefers-color-scheme: light) {
+            /* Keep it dark even in light mode to maintain Tech Forward branding */
+            #pageLoader { background: #0a0a0a !important; }
+            #loaderP { color: #00ff88 !important; }
+            .loader-dot { background: #00ff88 !important; }
+        }
+
+    </style>
+
+    <header class="navbar">
+        <div class="nav-left">
+            <a href="index.html" class="nav-link" style="font-weight: 700; font-size: 1.3rem; letter-spacing: -0.5px;">PickPose</a>
+        </div>
+        <div class="nav-center">
+            <div class="top-search-bar">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="Search photos...">
+            </div>
+        </div>
+
+        <div class="nav-links">
+            <button id="btnAbout" class="nav-link-btn">About</button>
+            <button id="btnContact" class="nav-link-btn">Contact Us</button>
+        </div>
+
+        <div class="nav-right" id="navRightAuth" style="display: flex; align-items: center; gap: 15px;">
+            <!-- User Profile Icon dynamically shown when logged in -->
+            <i class="fa-solid fa-circle-user hidden" id="userProfileIcon" style="font-size: 1.25rem; color: #a1a1aa; cursor: pointer;" title="Your Account"></i>
+            <button class="nav-link" id="btnNavLogin" style="background: none; border: none; font-size: 14px; font-weight: 500; cursor: pointer;">Log In</button>
+            <button class="btn-signup" id="btnNavSignup" style="border: none; cursor: pointer; padding: 8px 16px;">Sign Up</button>
+            <button class="nav-link hidden" id="btnNavLogout" style="background: none; border: none; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-muted);">Log Out</button>
+        </div>
+    </header>
+
+    <!-- Main category row (Compressed) -->
+    <div class="filter-scroll" id="categoryFilterWrapper">
+        <div class="filter-container" id="filterContainer">
+            <!-- Dynamically filled with main categories only -->
+        </div>
+    </div>
+
+
+    <!-- Filter Drawer (Drawer Sidebar) -->
+    <div class="filter-drawer hidden" id="filterDrawer">
+        <div class="drawer-header">
+            <h3>Advanced Filters</h3>
+            <button id="btnCloseDrawer" class="drawer-close">&times;</button>
+        </div>
+        <div class="drawer-body">
+            <div class="drawer-section">
+                <h4>Person Category</h4>
+                <div class="drawer-filter-group" id="genderFilterContainer">
+                    <button class="filter-btn active" data-gender="all">All Genders</button>
+                    <button class="filter-btn" data-gender="male">Male</button>
+                    <button class="filter-btn" data-gender="female">Female</button>
+                    <button class="filter-btn" data-gender="both">Both/Combine</button>
+                </div>
+            </div>
+            
+            <div class="drawer-section">
+                <h4>Pose Difficulty</h4>
+                <div class="drawer-filter-group" id="difficultyFilterContainer">
+                    <button class="filter-btn difficulty-btn active" data-difficulty="all">All Levels</button>
+                    <button class="filter-btn difficulty-btn beginner" data-difficulty="beginner">Beginner</button>
+                    <button class="filter-btn difficulty-btn intermediate" data-difficulty="intermediate">Intermediate</button>
+                    <button class="filter-btn difficulty-btn advanced" data-difficulty="advanced">Advanced</button>
+                </div>
+            </div>
+        </div>
+        <div class="drawer-footer">
+            <button id="btnClearAllFilters" class="btn-clear-filters">Reset All</button>
+            <button id="btnApplyFilters" class="btn-apply-filters">Apply</button>
+        </div>
+    </div>
+
+
+    <main id="posesGrid" class="poses-grid"></main>
+
+    <!-- Footer Section -->
+    <footer class="app-footer">
+        <div class="footer-copy">
+            &copy; 2026 PickPose. All Rights Reserved.
+        </div>
+    </footer>
+
+
+    <!-- Secondary Overlays (About & Contact) -->
+    <div id="aboutOverlay" class="drawer-overlay hidden">
+        <div class="overlay-content">
+            <button id="closeAbout" class="overlay-close">&times;</button>
+            <div class="overlay-body">
+                <h2 class="neon-title">About PickPose</h2>
+                <div class="about-grid">
+                    <div class="about-card">
+                        <i class="fa-solid fa-eye"></i>
+                        <h3>Vision</h3>
+                        <p>To provide high-quality photography references that fuel creativity for models, photographers, and creators worldwide.</p>
+                    </div>
+                    <div class="about-card">
+                        <i class="fa-solid fa-cube"></i>
+                        <h3>Innovation</h3>
+                        <p>Featuring our unique 360-degree pose viewer, we let you see every angle and detail of professional reference shots.</p>
+                    </div>
+                    <div class="about-card">
+                        <i class="fa-solid fa-microchip"></i>
+                        <h3>Tech</h3>
+                        <p>Built with modern web standards, ensuring a lightning-fast and immersive experience on any device.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="contactOverlay" class="drawer-overlay hidden">
+        <div class="overlay-content">
+            <button id="closeContact" class="overlay-close">&times;</button>
+            <div class="overlay-body">
+                <h2 class="neon-title">Connect with Us</h2>
+                <p class="section-desc">Have questions or want to collaborate? Send us a message below.</p>
+                <form id="contactForm" class="neon-form">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Full Name</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-user"></i>
+                                <input type="text" id="contactName" placeholder="Your name" required>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Email Address</label>
+                            <div class="input-wrapper">
+                                <i class="fa-solid fa-envelope"></i>
+                                <input type="email" id="contactEmail" placeholder="name@email.com" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Your Message</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-message"></i>
+                            <textarea id="contactMessage" placeholder="How can we help?" rows="5" required></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" id="btnSubmitContact" class="btn-primary">
+                        <span class="btn-text">Send Message</span>
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                    <div id="contactSuccessMsg" class="success-alert hidden">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>Thank you! Your message has been sent.</span>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="poseModal" class="modal hidden">
+
+        <div class="modal-bg" id="modalBgClick"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <button id="closeModal" class="btn-back"><i class="fa-solid fa-chevron-left"></i> Back</button>
+                <div class="modal-title" id="modalTitle"></div>
+                <button class="btn-edit">Edit</button>
+            </div>
+            <div class="modal-image-wrapper">
+                <img id="modalImg" src="" alt="Pose" draggable="false">
+            </div>
+            <div id="modalTags" class="modal-tags"></div>
+            <div class="modal-footer">
+                <i id="btnFavorite" class="fa-regular fa-heart" title="Favorite"></i>
+                <i id="btnShare" class="fa-solid fa-share-nodes" title="Share"></i>
+                <i class="fa-solid fa-circle-info" title="Info"></i>
+                <i class="fa-solid fa-trash" title="Delete (Admin Only)"></i>
+            </div>
+            <div class="pose-indicator">Swipe to navigate</div>
+        </div>
+
+        <!-- SHARE MENU POPUP -->
+        <div id="shareMenu" class="share-menu hidden">
+            <div class="share-menu-header">
+                <span>Share Pose</span>
+                <button id="closeShareMenu"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="share-options">
+                <button class="share-item" data-platform="whatsapp">
+                    <i class="fa-brands fa-whatsapp" style="color: #25D366;"></i>
+                    <span>WhatsApp</span>
+                </button>
+                <button class="share-item" data-platform="pinterest">
+                    <i class="fa-brands fa-pinterest" style="color: #E60023;"></i>
+                    <span>Pinterest</span>
+                </button>
+                <button class="share-item" data-platform="twitter">
+                    <i class="fa-brands fa-x-twitter"></i>
+                    <span>Twitter</span>
+                </button>
+                <button class="share-item" data-platform="instagram">
+                    <i class="fa-brands fa-instagram" style="color: #E4405F;"></i>
+                    <span>Instagram</span>
+                </button>
+                <button class="share-item" data-platform="copy">
+                    <i class="fa-solid fa-link"></i>
+                    <span>Copy Link</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUTH MODAL -->
+    <div id="authModal" class="modal auth-modal hidden">
+        <div class="modal-bg" id="authModalBg"></div>
+        <div class="auth-card">
+            <div class="auth-header">
+                <h3>Sign Up / Log In</h3>
+                <button id="closeAuthModal" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="auth-body" style="min-height: 250px; position: relative;">
+                
+                <!-- START MENU -->
+                <div id="authModeSelection" class="auth-step">
+                    <p class="auth-desc">Choose an option to continue.</p>
+                    <button id="btnGoogleLogin" class="btn-outline" style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style="width: 18px; height: 18px;">
+                        Continue with Google
+                    </button>
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <hr style="flex: 1; border: none; border-top: 1px solid var(--border);">
+                        <span style="padding: 0 10px; color: var(--text-muted); font-size: 12px; font-weight: 500;">OR</span>
+                        <hr style="flex: 1; border: none; border-top: 1px solid var(--border);">
+                    </div>
+                    <button id="btnGoToLogin" class="btn-primary" style="margin-bottom: 15px;">Log In with Email</button>
+                    <button id="btnGoToSignup" class="btn-outline">Create New Account</button>
+                </div>
+
+                <!-- LOGIN TAB -->
+                <div id="authStepLogin" class="auth-step hidden">
+                    <p class="auth-desc">Log into Pickpose.</p>
+                    <div class="input-group">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="loginIdentifier" placeholder="Email or Username">
+                    </div>
+                    <div class="input-group" style="position: relative;">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="loginPassword" placeholder="Secure Password" minlength="6">
+                        <i class="fa-solid fa-eye pwd-toggle" style="position: absolute; right: 15px; cursor: pointer; color: #8888a0;" title="Show Password"></i>
+                    </div>
+                    <button id="btnLoginSubmit" class="btn-primary">Log In</button>
+                    <button class="btn-link" id="btnBackToMenuLogin" style="background: none; border: none; color: #8888a0; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px;">&larr; Back to Menu</button>
+                </div>
+
+                <!-- SIGNUP STEP 1: Email -->
+                <div id="authSignupStep1" class="auth-step hidden">
+                    <p class="auth-desc">Step 1: Enter your email address for verification.</p>
+                    <div class="input-group">
+                        <i class="fa-regular fa-envelope"></i>
+                        <input type="email" id="signupEmail" placeholder="name@example.com">
+                    </div>
+                    <button id="btnSignupSendOtp" class="btn-primary">Send OTP Code</button>
+                    <button class="btn-link" id="btnBackToMenuSignup" style="background: none; border: none; color: #8888a0; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px;">&larr; Back to Menu</button>
+                </div>
+
+                <!-- SIGNUP STEP 2: Verify OTP -->
+                <div id="authSignupStep2" class="auth-step hidden">
+                    <p class="auth-desc">Step 2: Enter the 6-digit code sent to your email.</p>
+                    <div class="input-group" style="text-align: center;">
+                        <input type="text" id="signupOtp" placeholder="000000" maxlength="6" style="letter-spacing: 5px; text-align: center; font-weight: bold; font-size: 1.2rem; padding-left:0;">
+                    </div>
+                    <button id="btnSignupVerifyOtp" class="btn-primary">Verify Code</button>
+                    <button id="btnResendOtp" style="background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 15px;">Resend Code</button>
+                </div>
+
+                <!-- SIGNUP STEP 3: Password -->
+                <div id="authSignupStep3" class="auth-step hidden">
+                    <p class="auth-desc">Step 3: Create a secure password.</p>
+                    <p style="font-size: 12px; color: #8888a0; margin-bottom: 15px; text-align: left;"><i class="fa-solid fa-circle-exclamation"></i> Must be MINIMUM 6 chars containing: at least 2 lowercase, 2 uppercase, 2 numbers.</p>
+                    <div class="input-group" style="position: relative;">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="signupPassword" placeholder="e.g. Aa1Bb2" minlength="6">
+                        <i class="fa-solid fa-eye pwd-toggle" style="position: absolute; right: 15px; cursor: pointer; color: #8888a0;" title="Show Password"></i>
+                    </div>
+                    <button id="btnSignupPassword" class="btn-primary">Continue</button>
+                </div>
+
+                <!-- SIGNUP STEP 4: Username -->
+                <div id="authSignupStep4" class="auth-step hidden">
+                    <p class="auth-desc">Step 4: Pick a unique username.</p>
+                    <div class="input-group">
+                        <i class="fa-solid fa-at"></i>
+                        <input type="text" id="signupUsername" placeholder="username" maxlength="20">
+                    </div>
+                    <button id="btnSignupFinal" class="btn-primary">Complete Signup!</button>
+                </div>
+
+                <div id="authWizardErrorMsg" style="color: red; font-size: 13px; margin-top: 15px; text-align: center;" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                .catch(err => console.error('Service Worker registration failed: ', err));
+            });
+        }
+    </script>
+    <!-- Page Loader & Navigation Transition -->
+    <script>
+        function hideLoader() {
+            const loader = document.getElementById('pageLoader');
+            if (loader && loader.style.opacity !== '0') {
+                loader.style.opacity = '0';
+                loader.style.visibility = 'hidden';
+                setTimeout(() => loader.remove(), 400);
+            }
+        }
+
+        // Hide as soon as DOM is ready
+        document.addEventListener('DOMContentLoaded', () => setTimeout(hideLoader, 500));
+        // Also hide on full load
+        window.addEventListener('load', () => setTimeout(hideLoader, 200));
+        // Failsafe: always hide after 3 seconds no matter what
+        setTimeout(hideLoader, 3000);
+
+        // Show loader when navigating to another page
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a[href]');
+            if (!link) return;
+            const href = link.getAttribute('href');
+            if (!href || href === '#' || href.startsWith('#') || href.startsWith('javascript') || href.startsWith('mailto')) return;
+            if (link.target === '_blank') return;
+            e.preventDefault();
+            const loader = document.getElementById('pageLoader') || createLoader();
+            loader.style.opacity = '1';
+            loader.style.visibility = 'visible';
+            setTimeout(() => { window.location.href = href; }, 350);
+        });
+
+        function createLoader() {
+            const div = document.createElement('div');
+            div.id = 'pageLoader';
+            div.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#faf9f6;transition:opacity 0.4s ease,visibility 0.4s ease;opacity:0;visibility:hidden;';
+            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (isDark) div.style.background = '#0a0a0a';
+            div.innerHTML = `<div style="text-align:center;"><div style="font-family:'Inter',sans-serif;font-size:72px;font-weight:800;color:${isDark?'#faf9f6':'#1a1a1a'};letter-spacing:-3px;animation:pPulse 1.2s ease-in-out infinite;">P</div><div style="margin-top:12px;display:flex;gap:6px;justify-content:center;"><span style="width:6px;height:6px;border-radius:50%;background:${isDark?'#faf9f6':'#1a1a1a'};opacity:0.3;animation:dotBounce 1.2s ease-in-out infinite;"></span><span style="width:6px;height:6px;border-radius:50%;background:${isDark?'#faf9f6':'#1a1a1a'};opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.2s infinite;"></span><span style="width:6px;height:6px;border-radius:50%;background:${isDark?'#faf9f6':'#1a1a1a'};opacity:0.3;animation:dotBounce 1.2s ease-in-out 0.4s infinite;"></span></div></div>`;
+            document.body.appendChild(div);
+            return div;
+        }
+    </script>
+
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script type="text/javascript">
+        (function(){
+            emailjs.init({
+                publicKey: "xhroC5sVcS5_27jxz",
+            });
+        })();
+    </script>
+</body>
+</html>
