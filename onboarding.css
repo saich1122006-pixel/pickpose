@@ -1,0 +1,170 @@
+/* Onboarding Overlay - Tech Forward Neon */
+#onboardingOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    /* Lowered to be below modals but above main content */
+    background: var(--bg-main);
+    background-image: var(--bg-gradient);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    touch-action: none;
+    /* Disable multi-touch gestures like pinch-to-zoom */
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+#onboardingOverlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.onboarding-carousel {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    overflow-x: hidden;
+    /* Prevent manual scrolling */
+    scroll-behavior: smooth;
+}
+
+.onboarding-slide {
+    min-width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Center vertically for better visibility */
+    align-items: center;
+    padding: 20px 20px 140px 20px;
+    /* Leave space for footer */
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    /* No scrolling for the matter */
+}
+
+.onboarding-image-container {
+    width: 100%;
+    max-width: 380px;
+    aspect-ratio: 4 / 5;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 25px;
+    box-shadow: 0 0 40px var(--primary-glow);
+    border: 2px solid var(--primary);
+    background: var(--card-bg);
+    flex-shrink: 0;
+}
+
+.onboarding-image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.onboarding-content {
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 20px;
+}
+
+.onboarding-content h2 {
+    font-size: 1.8rem;
+    color: var(--primary);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px var(--primary-glow);
+    font-family: 'Outfit', sans-serif;
+}
+
+.onboarding-content p {
+    font-size: 1rem;
+    color: #e0e0e0;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    padding: 0 10px;
+}
+
+/* Footer Controls */
+.onboarding-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100px;
+    padding: 0 30px 40px 30px;
+    display: flex;
+    justify-content: space-between;
+    /* Put dots and button on opposite sides */
+    align-items: center;
+    z-index: 10;
+}
+
+.onboarding-dots {
+    display: flex;
+    gap: 10px;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: all 0.3s ease;
+}
+
+.dot.active {
+    background: var(--primary);
+    box-shadow: 0 0 10px var(--primary-glow);
+    width: 25px;
+    border-radius: 5px;
+}
+
+.btn-onboarding-next {
+    background: var(--primary);
+    color: var(--primary-text);
+    border: none;
+    padding: 12px 30px;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 20px var(--primary-glow);
+    white-space: nowrap;
+}
+
+.btn-onboarding-next:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px var(--primary-glow);
+}
+
+.btn-onboarding-next:active {
+    transform: scale(0.95);
+}
+
+/* Specific button for the last slide */
+#btnGetStarted {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .onboarding-content h2 {
+        font-size: 1.5rem;
+    }
+
+    .onboarding-content p {
+        font-size: 1rem;
+    }
+
+    .onboarding-image-container {
+        max-width: 300px;
+    }
+}

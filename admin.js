@@ -11,49 +11,9 @@ const ADMIN_EMAILS = ['admin@pickpose.com'];
 
 const GENDER_ENABLED_KEY = 'pickpose_gender_enabled';
 
-// --- Default pose data (used on first load to seed DB if empty) ---
-const defaultPoses = [
-    { id: 1, title: "", category: "culture", gender: "both", tags: ["tradition", "dance", "ritual"], images: ["images/crossed.png"] },
-    { id: 2, title: "", category: "culture", gender: "female", tags: ["art", "classical", "heritage"], images: ["images/profile.png"] },
-    { id: 3, title: "", category: "culture", gender: "male", tags: ["folk", "tradition", "ethnic"], images: ["images/hip.png"] },
-    { id: 4, title: "", category: "culture", gender: "male", tags: ["music", "instrument", "classical"], images: ["images/lean.png"] },
-    { id: 5, title: "", category: "culture", gender: "female", tags: ["pottery", "craft", "handmade"], images: ["images/stride.png"] },
-    { id: 6, title: "", category: "culture", gender: "none", tags: ["painting", "mural", "art"], images: ["images/stairs.png"] },
-    { id: 7, title: "", category: "culture", gender: "male", tags: ["sculpture", "stone", "carving"], images: ["images/crouch.png"] },
-    { id: 8, title: "", category: "culture", gender: "female", tags: ["weaving", "textile", "loom"], images: ["images/jump.png"] },
-    { id: 9, title: "", category: "culture", gender: "both", tags: ["ceremony", "prayer", "spiritual"], images: ["images/sprint.png"] },
-    { id: 10, title: "", category: "culture", gender: "none", tags: ["market", "bazaar", "local"], images: ["images/pockets_front.png"] },
-    { id: 11, title: "", category: "festivals", gender: "both", tags: ["celebration", "lights", "diwali"], images: ["images/crossed.png"] },
-    { id: 12, title: "", category: "festivals", gender: "both", tags: ["colors", "holi", "spring"], images: ["images/hip.png"] },
-    { id: 13, title: "", category: "festivals", gender: "female", tags: ["harvest", "pongal", "onam"], images: ["images/men1.png"] },
-    { id: 14, title: "", category: "festivals", gender: "male", tags: ["procession", "parade", "crowd"], images: ["images/stride.png"] },
-    { id: 15, title: "", category: "festivals", gender: "none", tags: ["fireworks", "night", "sky"], images: ["images/jump.png"] },
-    { id: 16, title: "", category: "festivals", gender: "female", tags: ["decorations", "rangoli", "flowers"], images: ["images/lean.png"] },
-    { id: 17, title: "", category: "festivals", gender: "male", tags: ["lanterns", "night", "glow"], images: ["images/profile.png"] },
-    { id: 18, title: "", category: "festivals", gender: "both", tags: ["dance", "garba", "navratri"], images: ["images/sprint.png"] },
-    { id: 19, title: "", category: "festivals", gender: "none", tags: ["food", "feast", "sweets"], images: ["images/stairs.png"] },
-    { id: 20, title: "", category: "festivals", gender: "male", tags: ["music", "drums", "folk"], images: ["images/pockets_front.png"] },
-    { id: 21, title: "", category: "clothing", gender: "female", tags: ["saree", "silk", "traditional"], images: ["images/profile.png"] },
-    { id: 22, title: "", category: "clothing", gender: "male", tags: ["kurta", "ethnic", "embroidery"], images: ["images/crossed.png"] },
-    { id: 23, title: "", category: "clothing", gender: "male", tags: ["turban", "headwear", "rajasthani"], images: ["images/men1.png"] },
-    { id: 24, title: "", category: "clothing", gender: "female", tags: ["lehenga", "bridal", "wedding"], images: ["images/hip.png"] },
-    { id: 25, title: "", category: "clothing", gender: "male", tags: ["sherwani", "groom", "formal"], images: ["images/pockets_front.png"] },
-    { id: 26, title: "", category: "clothing", gender: "male", tags: ["dhoti", "cotton", "south"], images: ["images/lean.png"] },
-    { id: 27, title: "", category: "clothing", gender: "female", tags: ["jewelry", "gold", "ornament"], images: ["images/stairs.png"] },
-    { id: 28, title: "", category: "clothing", gender: "female", tags: ["dupatta", "scarf", "drape"], images: ["images/stride.png"] },
-    { id: 29, title: "", category: "clothing", gender: "both", tags: ["bandhani", "tiedye", "pattern"], images: ["images/crouch.png"] },
-    { id: 30, title: "", category: "clothing", gender: "male", tags: ["chikan", "lucknow", "white"], images: ["images/jump.png"] },
-    { id: 31, title: "", category: "heritage places", gender: "none", tags: ["temple", "ancient", "stone"], images: ["images/stairs.png"] },
-    { id: 32, title: "", category: "heritage places", gender: "none", tags: ["fort", "medieval", "wall"], images: ["images/crossed.png"] },
-    { id: 33, title: "", category: "heritage places", gender: "both", tags: ["palace", "royal", "architecture"], images: ["images/profile.png"] },
-    { id: 34, title: "", category: "heritage places", gender: "none", tags: ["monument", "memorial", "historic"], images: ["images/hip.png"] },
-    { id: 35, title: "", category: "heritage places", gender: "none", tags: ["ruins", "excavation", "archaeological"], images: ["images/lean.png"] },
-    { id: 36, title: "", category: "heritage places", gender: "none", tags: ["stepwell", "water", "gujarat"], images: ["images/men1.png"] },
-    { id: 37, title: "", category: "heritage places", gender: "none", tags: ["mosque", "dome", "marble"], images: ["images/stride.png"] },
-    { id: 38, title: "", category: "heritage places", gender: "both", tags: ["cave", "painting", "ajanta"], images: ["images/sprint.png"] },
-    { id: 39, title: "", category: "heritage places", gender: "none", tags: ["garden", "mughal", "fountain"], images: ["images/pockets_front.png"] },
-    { id: 40, title: "", category: "heritage places", gender: "none", tags: ["tower", "minaret", "qutub"], images: ["images/jump.png"] }
-];
+// No default poses — all content managed via admin panel
+const defaultPoses = [];
+
 
 // ============================================================
 // DATA HELPERS
@@ -583,95 +543,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    const TARGET_ASPECT = 4 / 5; // Pose card aspect ratio
 
-    // Detect faces using browser's native FaceDetector API
-    async function detectFaces(img) {
-        if (!('FaceDetector' in window)) return [];
-        try {
-            const detector = new FaceDetector({ fastMode: true, maxDetectedFaces: 10 });
-            return await detector.detect(img);
-        } catch (e) {
-            console.log('FaceDetector unavailable:', e.message);
-            return [];
-        }
-    }
 
-    // Calculate smart crop rectangle focused on faces/body
-    function getSmartCropRect(imgW, imgH, faces) {
-        const imgAspect = imgW / imgH;
-
-        // Already matching aspect ratio (±5%) — no crop needed
-        if (Math.abs(imgAspect - TARGET_ASPECT) < 0.05) {
-            return { x: 0, y: 0, w: imgW, h: imgH };
-        }
-
-        let cropW, cropH, cropX, cropY;
-
-        if (imgAspect > TARGET_ASPECT) {
-            // Image is WIDER than 4:5 → crop sides
-            cropH = imgH;
-            cropW = Math.round(imgH * TARGET_ASPECT);
-        } else {
-            // Image is TALLER than 4:5 → crop top/bottom
-            cropW = imgW;
-            cropH = Math.round(imgW / TARGET_ASPECT);
-        }
-
-        // Default: center crop
-        cropX = Math.round((imgW - cropW) / 2);
-        cropY = Math.round((imgH - cropH) / 2);
-
-        if (faces.length > 0) {
-            // ── Face-aware crop ──
-            // Find bounding box enclosing ALL faces
-            let allMinX = Infinity, allMinY = Infinity, allMaxX = 0, allMaxY = 0;
-            faces.forEach(f => {
-                const b = f.boundingBox;
-                allMinX = Math.min(allMinX, b.x);
-                allMinY = Math.min(allMinY, b.y);
-                allMaxX = Math.max(allMaxX, b.x + b.width);
-                allMaxY = Math.max(allMaxY, b.y + b.height);
-            });
-
-            const faceCenterX = (allMinX + allMaxX) / 2;
-            const faceCenterY = (allMinY + allMaxY) / 2;
-            // Estimate full body as ~4x face height below face top
-            const faceHeight = allMaxY - allMinY;
-            const bodyBottomEstimate = Math.min(allMinY + faceHeight * 4.5, imgH);
-
-            if (imgAspect > TARGET_ASPECT) {
-                // Wider image: center crop horizontally on face
-                cropX = Math.round(faceCenterX - cropW / 2);
-            } else {
-                // Taller image: place face in upper 30% of frame
-                const idealFaceY = cropH * 0.25;
-                cropY = Math.round(faceCenterY - idealFaceY);
-
-                // But also try to include estimated body
-                const bodyMargin = bodyBottomEstimate - (cropY + cropH);
-                if (bodyMargin > 0) {
-                    // Body extends below crop — shift down slightly
-                    cropY = Math.round(Math.min(cropY + bodyMargin * 0.5, imgH - cropH));
-                }
-            }
-
-            // Clamp to image bounds
-            cropX = Math.max(0, Math.min(cropX, imgW - cropW));
-            cropY = Math.max(0, Math.min(cropY, imgH - cropH));
-        } else {
-            // ── No face detected: rule-of-thirds upper-center bias ──
-            // For poses, the subject is usually in the upper-center
-            if (imgAspect <= TARGET_ASPECT) {
-                // Taller: bias toward top third
-                cropY = Math.round((imgH - cropH) * 0.3);
-            }
-        }
-
-        return { x: cropX, y: cropY, w: cropW, h: cropH };
-    }
-
-    async function compressImageForUser(file, maxWidth = 1800, quality = 0.94) {
+    async function compressImage(file, maxWidth = 1800, quality = 0.92) {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -679,31 +553,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 const img = new Image();
                 img.src = event.target.result;
                 img.onload = async () => {
-                    // 1. Detect faces on original image
-                    const faces = await detectFaces(img);
-                    if (faces.length > 0) {
-                        console.log(`🎯 Detected ${faces.length} face(s) — smart cropping`);
-                    } else {
-                        console.log('📐 No faces detected — using rule-of-thirds crop');
-                    }
-
-                    // 2. Calculate smart crop on original dimensions
-                    const crop = getSmartCropRect(img.width, img.height, faces);
-
-                    // 3. Scale cropped region to fit maxWidth
-                    let outW = crop.w;
-                    let outH = crop.h;
+                    // No crop - use full dimensions to preserve natural aspect ratio
+                    let outW = img.width;
+                    let outH = img.height;
+                    
                     if (outW > maxWidth) {
                         outH = Math.round((outH * maxWidth) / outW);
                         outW = maxWidth;
                     }
 
-                    // 4. Draw cropped + scaled result
                     const canvas = document.createElement('canvas');
                     canvas.width = outW;
                     canvas.height = outH;
                     const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, outW, outH);
+                    
+                    // Draw the entire image, scaled but not cropped
+                    ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, outW, outH);
 
                     resolve(canvas.toDataURL('image/jpeg', quality));
                 };
@@ -718,7 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        uploadPlaceholder.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><p>AI cropping & compressing ' + validFiles.length + ' image(s)...</p>';
+        uploadPlaceholder.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><p>Optimizing ' + validFiles.length + ' image(s)...</p>';
 
         for (const file of validFiles) {
             const data = await compressImage(file);
@@ -796,13 +661,11 @@ document.addEventListener('DOMContentLoaded', () => {
             img.onload = async () => {
                 clearTimeout(timeout);
                 try {
-                    // Smart face-aware crop
-                    const faces = await detectFaces(img);
-                    const crop = getSmartCropRect(img.width, img.height, faces);
-                    const maxWidth = 1200;
-
-                    let outW = crop.w;
-                    let outH = crop.h;
+                    // No crop - use full dimensions for natural aspect ratio
+                    const maxWidth = 1800;
+                    let outW = img.width;
+                    let outH = img.height;
+                    
                     if (outW > maxWidth) {
                         outH = Math.round((outH * maxWidth) / outW);
                         outW = maxWidth;
@@ -812,8 +675,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     canvas.width = outW;
                     canvas.height = outH;
                     const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, outW, outH);
-                    resolve(canvas.toDataURL('image/jpeg', 0.85));
+                    
+                    // Draw entire image scaled but not cropped
+                    ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, outW, outH);
+                    resolve(canvas.toDataURL('image/jpeg', 0.90));
                 } catch (e) {
                     reject(new Error("Image processing failed: " + e.message));
                 }

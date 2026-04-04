@@ -2,49 +2,8 @@ import { db, auth } from './firebase-config.js';
 import { collection, getDocs, getDoc, setDoc, doc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-// Default pose data — used to seed Firestore if empty
-const defaultPosesData = [
-    { id: 1, title: "", category: "culture", gender: "both", tags: ["tradition", "dance", "ritual"], images: ["images/crossed.png"] },
-    { id: 2, title: "", category: "culture", gender: "female", tags: ["art", "classical", "heritage"], images: ["images/profile.png"] },
-    { id: 3, title: "", category: "culture", gender: "male", tags: ["folk", "tradition", "ethnic"], images: ["images/hip.png"] },
-    { id: 4, title: "", category: "culture", gender: "male", tags: ["music", "instrument", "classical"], images: ["images/lean.png"] },
-    { id: 5, title: "", category: "culture", gender: "female", tags: ["pottery", "craft", "handmade"], images: ["images/stride.png"] },
-    { id: 6, title: "", category: "culture", gender: "none", tags: ["painting", "mural", "art"], images: ["images/stairs.png"] },
-    { id: 7, title: "", category: "culture", gender: "male", tags: ["sculpture", "stone", "carving"], images: ["images/crouch.png"] },
-    { id: 8, title: "", category: "culture", gender: "female", tags: ["weaving", "textile", "loom"], images: ["images/jump.png"] },
-    { id: 9, title: "", category: "culture", gender: "both", tags: ["ceremony", "prayer", "spiritual"], images: ["images/sprint.png"] },
-    { id: 10, title: "", category: "culture", gender: "none", tags: ["market", "bazaar", "local"], images: ["images/pockets_front.png"] },
-    { id: 11, title: "", category: "festivals", gender: "both", tags: ["celebration", "lights", "diwali"], images: ["images/crossed.png"] },
-    { id: 12, title: "", category: "festivals", gender: "both", tags: ["colors", "holi", "spring"], images: ["images/hip.png"] },
-    { id: 13, title: "", category: "festivals", gender: "female", tags: ["harvest", "pongal", "onam"], images: ["images/men1.png"] },
-    { id: 14, title: "", category: "festivals", gender: "male", tags: ["procession", "parade", "crowd"], images: ["images/stride.png"] },
-    { id: 15, title: "", category: "festivals", gender: "none", tags: ["fireworks", "night", "sky"], images: ["images/jump.png"] },
-    { id: 16, title: "", category: "festivals", gender: "female", tags: ["decorations", "rangoli", "flowers"], images: ["images/lean.png"] },
-    { id: 17, title: "", category: "festivals", gender: "male", tags: ["lanterns", "night", "glow"], images: ["images/profile.png"] },
-    { id: 18, title: "", category: "festivals", gender: "both", tags: ["dance", "garba", "navratri"], images: ["images/sprint.png"] },
-    { id: 19, title: "", category: "festivals", gender: "none", tags: ["food", "feast", "sweets"], images: ["images/stairs.png"] },
-    { id: 20, title: "", category: "festivals", gender: "male", tags: ["music", "drums", "folk"], images: ["images/pockets_front.png"] },
-    { id: 21, title: "", category: "clothing", gender: "female", tags: ["saree", "silk", "traditional"], images: ["images/profile.png"] },
-    { id: 22, title: "", category: "clothing", gender: "male", tags: ["kurta", "ethnic", "embroidery"], images: ["images/crossed.png"] },
-    { id: 23, title: "", category: "clothing", gender: "male", tags: ["turban", "headwear", "rajasthani"], images: ["images/men1.png"] },
-    { id: 24, title: "", category: "clothing", gender: "female", tags: ["lehenga", "bridal", "wedding"], images: ["images/hip.png"] },
-    { id: 25, title: "", category: "clothing", gender: "male", tags: ["sherwani", "groom", "formal"], images: ["images/pockets_front.png"] },
-    { id: 26, title: "", category: "clothing", gender: "male", tags: ["dhoti", "cotton", "south"], images: ["images/lean.png"] },
-    { id: 27, title: "", category: "clothing", gender: "female", tags: ["jewelry", "gold", "ornament"], images: ["images/stairs.png"] },
-    { id: 28, title: "", category: "clothing", gender: "female", tags: ["dupatta", "scarf", "drape"], images: ["images/stride.png"] },
-    { id: 29, title: "", category: "clothing", gender: "both", tags: ["bandhani", "tiedye", "pattern"], images: ["images/crouch.png"] },
-    { id: 30, title: "", category: "clothing", gender: "male", tags: ["chikan", "lucknow", "white"], images: ["images/jump.png"] },
-    { id: 31, title: "", category: "heritage places", gender: "none", tags: ["temple", "ancient", "stone"], images: ["images/stairs.png"] },
-    { id: 32, title: "", category: "heritage places", gender: "none", tags: ["fort", "medieval", "wall"], images: ["images/crossed.png"] },
-    { id: 33, title: "", category: "heritage places", gender: "both", tags: ["palace", "royal", "architecture"], images: ["images/profile.png"] },
-    { id: 34, title: "", category: "heritage places", gender: "none", tags: ["monument", "memorial", "historic"], images: ["images/hip.png"] },
-    { id: 35, title: "", category: "heritage places", gender: "none", tags: ["ruins", "excavation", "archaeological"], images: ["images/lean.png"] },
-    { id: 36, title: "", category: "heritage places", gender: "none", tags: ["stepwell", "water", "gujarat"], images: ["images/men1.png"] },
-    { id: 37, title: "", category: "heritage places", gender: "none", tags: ["mosque", "dome", "marble"], images: ["images/stride.png"] },
-    { id: 38, title: "", category: "heritage places", gender: "both", tags: ["cave", "painting", "ajanta"], images: ["images/sprint.png"] },
-    { id: 39, title: "", category: "heritage places", gender: "none", tags: ["garden", "mughal", "fountain"], images: ["images/pockets_front.png"] },
-    { id: 40, title: "", category: "heritage places", gender: "none", tags: ["tower", "minaret", "qutub"], images: ["images/jump.png"] }
-];
+// No default poses — all content managed via admin panel
+const defaultPosesData = [];
 
 const GENDER_ENABLED_KEY = 'pickpose_gender_enabled';
 
@@ -61,6 +20,10 @@ let touchStartX = 0;
 let touchStartY = 0;
 let touchEndX = 0;
 let touchEndY = 0;
+let currentOnboardingSlide = 0;
+
+// PWA Install Prompt Variable
+let deferredPrompt;
 
 // Helper: Trigger subtle vibration on mobile devices
 function triggerHaptic(duration = 15) {
@@ -149,6 +112,7 @@ async function initPickpose() {
     const genderFilterWrapper = document.getElementById('genderFilterWrapper');
 
     setupAuth();
+    initOnboarding();
 
     // Load data from Firebase
     posesData = await loadPosesData();
@@ -608,7 +572,8 @@ function filterCards() {
 
         let matchDifficulty = true;
         if (activeDifficulty !== 'all') {
-            matchDifficulty = pose.difficulty === activeDifficulty;
+            const poseDiff = pose.difficulty || 'beginner';
+            matchDifficulty = poseDiff === activeDifficulty;
         }
 
         return matchCategory && matchGender && matchSearch && matchDifficulty;
@@ -710,6 +675,17 @@ function setupAuth() {
         }
         isAuthInitialized = true;
         updateHeaderAuthUI();
+        
+        // Onboarding Check
+        const onboardingOverlay = document.getElementById('onboardingOverlay');
+        if (user) {
+            onboardingOverlay?.classList.add('hidden');
+            document.body.style.overflow = '';
+        } else {
+            onboardingOverlay?.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
         filterCards(); // Refresh grid with auth state resolved
     });
 
@@ -801,6 +777,22 @@ function setupAuth() {
         btnDrawerContact.addEventListener('click', () => {
             profileDrawer.classList.add('hidden');
             document.getElementById('btnContact')?.click();
+        });
+    }
+
+    if (btnDrawerInstall) {
+        btnDrawerInstall.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // Show the browser's native install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`PWA Install User Response: ${outcome}`);
+                // Clear the deferred prompt variable since it can only be used once
+                deferredPrompt = null;
+                // Hide the install button
+                btnDrawerInstall.classList.add('hidden');
+            }
         });
     }
 
@@ -1482,7 +1474,134 @@ function openModal(pose) {
 document.addEventListener('DOMContentLoaded', () => {
     initPickpose();
     setupModal();
+
+    // --- REGISTER SERVICE WORKER ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('Service Worker: Registered'))
+                .catch(err => console.log(`Service Worker: Error: ${err}`));
+        });
+    }
+
+    // --- MANAGE PWA INSTALL PROMPT ---
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent the mini-infobar from appearing on mobile
+        e.preventDefault();
+        // Stash the event so it can be triggered later.
+        deferredPrompt = e;
+        
+        // --- 1. Manage Drawer Install Button ---
+        const installBtn = document.getElementById('btnDrawerInstall');
+        if (installBtn) {
+            installBtn.classList.remove('hidden');
+        }
+
+        // --- 2. Manage Onboarding Install Button ---
+        const onboardingInstallBtn = document.getElementById('btnOnboardingInstall');
+        if (onboardingInstallBtn) {
+            onboardingInstallBtn.classList.remove('hidden');
+            onboardingInstallBtn.addEventListener('click', () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => {
+                    deferredPrompt = null;
+                    onboardingInstallBtn.classList.add('hidden');
+                });
+            });
+        }
+
+        // --- 3. Auto-Show Installation Popup ---
+        // Only show if user hasn't dismissed it in this session
+        if (!sessionStorage.getItem('pwa_popup_dismissed')) {
+            const popup = document.getElementById('pwaInstallPopup');
+            if (popup) {
+                setTimeout(() => {
+                    popup.classList.remove('hidden');
+                    setupPwaPopupListeners(popup);
+                }, 2000); // 2 second delay for better feel
+            }
+        }
+    });
+
+    function setupPwaPopupListeners(popup) {
+        const btnInstall = document.getElementById('btnPwaInstall');
+        const btnClose = document.getElementById('btnPwaClose');
+
+        btnInstall?.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`PWA Popup User Response: ${outcome}`);
+                deferredPrompt = null;
+                popup.classList.add('hidden');
+            }
+        });
+
+        btnClose?.addEventListener('click', () => {
+            popup.classList.add('hidden');
+            sessionStorage.setItem('pwa_popup_dismissed', 'true');
+        });
+    }
+
+    window.addEventListener('appinstalled', (evt) => {
+        console.log('PickPose was installed.');
+        const installBtn = document.getElementById('btnDrawerInstall');
+        if (installBtn) {
+            installBtn.classList.add('hidden');
+        }
+    });
 });
+
+// ============================================================
+// ONBOARDING LOGIC
+// ============================================================
+function initOnboarding() {
+    const overlay = document.getElementById('onboardingOverlay');
+    const carousel = document.getElementById('onboardingCarousel');
+    const btnNext = document.getElementById('btnOnboardingNext');
+    const dots = document.querySelectorAll('#onboardingDots .dot');
+
+    if (!overlay || !carousel || !btnNext) return;
+
+    const totalSlides = 3;
+
+    btnNext.addEventListener('click', () => {
+        if (currentOnboardingSlide < totalSlides - 1) {
+            currentOnboardingSlide++;
+            updateOnboardingUI();
+        } else {
+            // Final slide: Open Auth Modal
+            window.openAuthModal('authModeSelection');
+        }
+    });
+
+    function updateOnboardingUI() {
+        // Scroll to the current slide
+        carousel.scrollTo({
+            left: carousel.offsetWidth * currentOnboardingSlide,
+            behavior: 'smooth'
+        });
+
+        // Update dots
+        dots.forEach((dot, idx) => {
+            dot.classList.toggle('active', idx === currentOnboardingSlide);
+        });
+
+        // Update button text on last slide
+        if (currentOnboardingSlide === totalSlides - 1) {
+            btnNext.textContent = 'Get Started';
+            btnNext.style.background = 'var(--primary)';
+            btnNext.style.color = 'var(--primary-text)';
+        } else {
+            btnNext.textContent = 'Next';
+        }
+    }
+
+    // Handle window resize to keep scroll aligned
+    window.addEventListener('resize', () => {
+        carousel.scrollLeft = carousel.offsetWidth * currentOnboardingSlide;
+    });
+}
 
 // ============================================================
 // IMAGE PROCESSING UTILITIES (PORTED FROM ADMIN)

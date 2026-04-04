@@ -3,12 +3,12 @@
   "short_name": "Pickpose",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0e0e15",
-  "theme_color": "#2563eb",
+  "background_color": "#0a0a0a",
+  "theme_color": "#c8a03c",
   "description": "A curated AI photography pose gallery.",
   "icons": [
     {
-      "src": "images/pickpose-icon.png",
+      "src": "images/pickpose-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
