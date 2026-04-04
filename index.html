@@ -9,13 +9,14 @@
     <!-- PWA Setup -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#00ff88">
-    <link rel="apple-touch-icon" href="images/icon-512x512.png">
+    <link rel="icon" type="image/png" href="images/pickpose-icon.png">
+    <link rel="apple-touch-icon" href="images/pickpose-icon.png">
 
     <!-- SEO & Social Media Open Graph Tags -->
     <meta name="description" content="A curated gallery of modern, stylish, and cultural photography poses.">
     <meta property="og:title" content="Pickpose | Albums">
     <meta property="og:description" content="A curated gallery of modern, stylish, and cultural photography poses.">
-    <meta property="og:image" content="images/icon-512x512.png">
+    <meta property="og:image" content="images/pickpose-icon.png">
     <meta property="og:type" content="website">
 
     <link
@@ -111,6 +112,9 @@
 
         <div class="nav-right" id="navRightAuth" style="display: flex; align-items: center; gap: 15px;">
             <!-- User Profile Icon dynamically shown when logged in -->
+            <button id="btnSubmitPoseMobile" class="nav-icon-link hidden" title="Add Pose" style="background: none; border: none; padding: 0;">
+                <i class="fa-solid fa-plus-circle" style="font-size: 1.25rem;"></i>
+            </button>
             <i class="fa-solid fa-circle-user hidden" id="userProfileIcon"
                 style="font-size: 1.25rem; color: #a1a1aa; cursor: pointer;" title="Your Account"></i>
             <button class="nav-link" id="btnNavLogin"
@@ -166,6 +170,80 @@
         </div>
     </div>
 
+
+
+    <!-- Profile Drawer (Consolidated Menu) -->
+    <div id="profileDrawer" class="drawer-overlay hidden">
+        <div class="drawer-content profile-drawer-content">
+            <button id="closeProfileDrawer" class="overlay-close">&times;</button>
+            <div class="drawer-body">
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <i class="fa-solid fa-circle-user"></i>
+                    </div>
+                    <div class="profile-info">
+                        <h3 id="profileUsername">User</h3>
+                        <p id="profileEmail">email@example.com</p>
+                    </div>
+                </div>
+
+                <div class="drawer-menu-divider"></div>
+
+                <div class="drawer-nav">
+                    <div class="drawer-nav-item" id="btnProfileDetails">
+                        <i class="fa-solid fa-id-card"></i>
+                        <span>My Account</span>
+                    </div>
+                    <div class="drawer-nav-item" id="btnDrawerAddPose">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Add Pose</span>
+                    </div>
+                    <div class="drawer-nav-item" id="btnDrawerAbout">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>About PickPose</span>
+                    </div>
+                    <div class="drawer-nav-item" id="btnDrawerContact">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span>Contact Us</span>
+                    </div>
+                </div>
+
+                <div class="drawer-menu-divider"></div>
+
+                <div class="drawer-footer-actions">
+                    <button id="btnDrawerLogout" class="btn-logout-drawer">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        Log Out
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Details Modal -->
+    <div id="profileDetailsModal" class="modal hidden">
+        <div class="modal-bg" id="profileDetailsBg"></div>
+        <div class="auth-card profile-details-card">
+            <div class="auth-header">
+                <h3>Account Details</h3>
+                <button id="closeProfileDetails" class="btn-close">&times;</button>
+            </div>
+            <div class="auth-body">
+                <div class="detail-row">
+                    <label>Unique ID</label>
+                    <span id="detailUid">---</span>
+                </div>
+                <div class="detail-row">
+                    <label>Email</label>
+                    <span id="detailEmail">---</span>
+                </div>
+                <div class="detail-row">
+                    <label>Member Since</label>
+                    <span id="detailJoined">---</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <main id="posesGrid" class="poses-grid"></main>
 

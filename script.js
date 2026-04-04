@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import { collection, getDocs, getDoc, setDoc, doc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // Default pose data — used to seed Firestore if empty
 const defaultPosesData = [
@@ -739,21 +739,95 @@ function setupAuth() {
         });
     }
 
-    // Toggle Logout button on Profile Icon click
+    // Handle Profile Drawer toggle
     const userIcon = document.getElementById('userProfileIcon');
-    if (userIcon && btnNavLogout) {
+    const profileDrawer = document.getElementById('profileDrawer');
+    const closeProfileDrawer = document.getElementById('closeProfileDrawer');
+
+    if (userIcon && profileDrawer) {
         userIcon.addEventListener('click', (e) => {
             e.stopPropagation();
-            btnNavLogout.classList.toggle('hidden');
+            openProfileDrawer();
         });
         
-        // Close logout menu if clicking elsewhere
+        if (closeProfileDrawer) {
+            closeProfileDrawer.addEventListener('click', () => {
+                profileDrawer.classList.add('hidden');
+                document.body.style.overflow = '';
+            });
+        }
+
+        // Close drawer if clicking elsewhere
         document.addEventListener('click', (e) => {
-            if (!userIcon.contains(e.target) && !btnNavLogout.contains(e.target)) {
-                btnNavLogout.classList.add('hidden');
+            const drawerContent = profileDrawer.querySelector('.drawer-content');
+            if (!profileDrawer.classList.contains('hidden') && 
+                drawerContent && !drawerContent.contains(e.target) && 
+                !userIcon.contains(e.target)) {
+                profileDrawer.classList.add('hidden');
+                document.body.style.overflow = '';
             }
         });
     }
+
+    // Drawer Menu Navigation
+    const btnProfileDetails = document.getElementById('btnProfileDetails');
+    const btnDrawerAddPose = document.getElementById('btnDrawerAddPose');
+    const btnDrawerAbout = document.getElementById('btnDrawerAbout');
+    const btnDrawerContact = document.getElementById('btnDrawerContact');
+    const btnDrawerLogout = document.getElementById('btnDrawerLogout');
+
+    if (btnProfileDetails) {
+        btnProfileDetails.addEventListener('click', () => {
+            profileDrawer.classList.add('hidden');
+            openProfileDetails();
+        });
+    }
+
+    if (btnDrawerAddPose) {
+        btnDrawerAddPose.addEventListener('click', () => {
+            profileDrawer.classList.add('hidden');
+            document.getElementById('btnSubmitPose')?.click();
+        });
+    }
+
+    if (btnDrawerAbout) {
+        btnDrawerAbout.addEventListener('click', () => {
+            profileDrawer.classList.add('hidden');
+            document.getElementById('btnAbout')?.click();
+        });
+    }
+
+    if (btnDrawerContact) {
+        btnDrawerContact.addEventListener('click', () => {
+            profileDrawer.classList.add('hidden');
+            document.getElementById('btnContact')?.click();
+        });
+    }
+
+    if (btnDrawerLogout) {
+        btnDrawerLogout.addEventListener('click', async () => {
+            profileDrawer.classList.add('hidden');
+            document.body.style.overflow = '';
+            try {
+                await signOut(auth);
+            } catch (err) {
+                alert("Logout failed: " + err.message);
+            }
+        });
+    }
+
+    // Account Details Modal Close
+    const profileDetailsModal = document.getElementById('profileDetailsModal');
+    const closeProfileDetails = document.getElementById('closeProfileDetails');
+    const profileDetailsBg = document.getElementById('profileDetailsBg');
+
+    const closeDetails = () => {
+        profileDetailsModal.classList.add('hidden');
+        document.body.style.overflow = '';
+    };
+
+    if (closeProfileDetails) closeProfileDetails.addEventListener('click', closeDetails);
+    if (profileDetailsBg) profileDetailsBg.addEventListener('click', closeDetails);
 
     // Modal Close
     const closeMod = () => {
@@ -776,10 +850,36 @@ function setupAuth() {
 
     const showError = (msg, isSuccess = false) => {
         const errEl = document.getElementById('authWizardErrorMsg');
+        if (!errEl) return;
         errEl.textContent = msg;
         errEl.style.color = isSuccess ? '#10b981' : 'red';
         errEl.classList.remove('hidden');
     };
+
+    // --- HANDLE REDIRECT RESULT (FOR MOBILE) ---
+    getRedirectResult(auth)
+        .then(async (result) => {
+            if (result && result.user) {
+                const user = result.user;
+                // Create profile if new
+                const userRef = doc(db, "users", user.uid);
+                const snap = await getDoc(userRef);
+                if (!snap.exists()) {
+                    await setDoc(userRef, {
+                        username: user.email.split('@')[0],
+                        email: user.email,
+                        createdAt: new Date()
+                    });
+                }
+                closeMod();
+            }
+        })
+        .catch((error) => {
+            console.error("Redirect Auth Error:", error);
+            if (error.code !== 'auth/web-storage-unsupported') {
+                showError("Login failed: " + error.message);
+            }
+        });
 
     // Mode Selection
     document.getElementById('btnGoToLogin').addEventListener('click', () => showStep('authStepLogin'));
@@ -790,33 +890,57 @@ function setupAuth() {
     // --- GOOGLE LOGIN ---
     document.getElementById('btnGoogleLogin').addEventListener('click', async () => {
         const provider = new GoogleAuthProvider();
+        // Request additional scopes if needed
+        provider.addScope('profile');
+        provider.addScope('email');
+
         showError("", true);
         const btn = document.getElementById('btnGoogleLogin');
         const originalHtml = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Connecting...`;
 
-        try {
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-            // Check if user exists in Firestore, if not create a basic profile
-            const userRef = doc(db, "users", user.uid);
-            const snap = await getDoc(userRef);
-            if (!snap.exists()) {
-                await setDoc(userRef, {
-                    username: user.email.split('@')[0], // default username
-                    email: user.email,
-                    createdAt: new Date()
-                });
+        try {
+            if (isMobile) {
+                // Redirect is more reliable on mobile to avoid popup blockers
+                await signInWithRedirect(auth, provider);
+            } else {
+                // Popup is better for desktop UX
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+
+                // Check if user exists in Firestore, if not create a basic profile
+                const userRef = doc(db, "users", user.uid);
+                const snap = await getDoc(userRef);
+                if (!snap.exists()) {
+                    await setDoc(userRef, {
+                        username: user.email.split('@')[0],
+                        email: user.email,
+                        createdAt: new Date()
+                    });
+                }
+                closeMod();
             }
-            closeMod();
         } catch (error) {
             console.error("Google Auth Error:", error);
-            showError("Google Sign-In failed: " + error.message);
+            let userMsg = error.message;
+            
+            if (error.code === 'auth/popup-blocked') {
+                userMsg = "Pop-up blocked! Please allow pop-ups for this site or try on a different browser.";
+            } else if (error.code === 'auth/operation-not-allowed') {
+                userMsg = "Google login is not enabled in Firebase. Please contact the administrator.";
+            } else if (error.code === 'auth/unauthorized-domain') {
+                userMsg = "This domain is not authorized in Firebase. Please add '" + window.location.hostname + "' to authorized domains.";
+            } else if (error.code === 'auth/cancelled-popup-request') {
+                userMsg = "Login cancelled.";
+            }
+
+            showError("Google Sign-In failed: " + userMsg);
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
         }
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
     });
 
     // --- LOGIN FLOW ---
@@ -993,26 +1117,87 @@ function setupAuth() {
 function updateHeaderAuthUI() {
     const btnLogin = document.getElementById('btnNavLogin');
     const btnSignup = document.getElementById('btnNavSignup');
-    const btnLogout = document.getElementById('btnNavLogout');
     const userIcon = document.getElementById('userProfileIcon');
+    const btnAbout = document.getElementById('btnAbout');
+    const btnContact = document.getElementById('btnContact');
+    const btnSubmitPose = document.getElementById('btnSubmitPose');
+    const btnSubmitPoseMobile = document.getElementById('btnSubmitPoseMobile');
 
-    // Safely exit if UI elements are missing
     if (!btnLogin) return;
 
     if (isLoggedIn()) {
         btnLogin.classList.add('hidden');
         btnSignup.classList.add('hidden');
-        // Logout stays hidden until user clicks profile icon (Requested by USER)
-        if (btnLogout) btnLogout.classList.add('hidden');
         if (userIcon) userIcon.classList.remove('hidden');
         if (btnSubmitPose) btnSubmitPose.classList.remove('hidden');
+        if (btnSubmitPoseMobile) btnSubmitPoseMobile.classList.remove('hidden');
+        
+        // Hide About/Contact from navbar when logged in (Consolidated to profile menu)
+        if (btnAbout) btnAbout.classList.add('hidden');
+        if (btnContact) btnContact.classList.add('hidden');
+
+        // Populate Drawer Info
+        const user = auth.currentUser;
+        const profileEmail = document.getElementById('profileEmail');
+        const profileUsername = document.getElementById('profileUsername');
+        
+        if (profileEmail) profileEmail.textContent = user.email;
+        if (profileUsername) {
+            // Try to get username from Firestore
+            const userRef = doc(db, "users", user.uid);
+            getDoc(userRef).then(snap => {
+                if (snap.exists()) {
+                    profileUsername.textContent = snap.data().username || user.email.split('@')[0];
+                } else {
+                    profileUsername.textContent = user.email.split('@')[0];
+                }
+            });
+        }
     } else {
         btnLogin.classList.remove('hidden');
         btnSignup.classList.remove('hidden');
-        if (btnLogout) btnLogout.classList.add('hidden');
         if (userIcon) userIcon.classList.add('hidden');
         if (btnSubmitPose) btnSubmitPose.classList.add('hidden');
+        if (btnSubmitPoseMobile) btnSubmitPoseMobile.classList.add('hidden');
+        
+        // Show About/Contact for guests
+        if (btnAbout) btnAbout.classList.remove('hidden');
+        if (btnContact) btnContact.classList.remove('hidden');
     }
+}
+
+function openProfileDrawer() {
+    const profileDrawer = document.getElementById('profileDrawer');
+    if (profileDrawer) {
+        profileDrawer.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+async function openProfileDetails() {
+    const modal = document.getElementById('profileDetailsModal');
+    const user = auth.currentUser;
+    if (!user || !modal) return;
+
+    document.getElementById('detailUid').textContent = user.uid;
+    document.getElementById('detailEmail').textContent = user.email;
+    
+    // Member since
+    try {
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists() && snap.data().createdAt) {
+            const date = snap.data().createdAt.toDate ? snap.data().createdAt.toDate() : new Date(snap.data().createdAt);
+            document.getElementById('detailJoined').textContent = date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        } else {
+            document.getElementById('detailJoined').textContent = "Unknown";
+        }
+    } catch(e) {
+        document.getElementById('detailJoined').textContent = "Error loading";
+    }
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
 }
 
 // --- MODAL & 360 SPIN LOGIC ---

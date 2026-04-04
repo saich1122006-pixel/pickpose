@@ -8,9 +8,10 @@
   "description": "A curated AI photography pose gallery.",
   "icons": [
     {
-      "src": "images/icon-512x512.png",
+      "src": "images/pickpose-icon.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
