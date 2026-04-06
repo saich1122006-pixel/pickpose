@@ -51,11 +51,27 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // --- Network-First Strategy for HTML ---
+  if (event.request.mode === 'navigate' || 
+      (event.request.method === 'GET' && event.request.headers.get('accept').includes('text/html'))) {
+    event.respondWith(
+      fetch(event.request).then(networkResponse => {
+        return caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+      }).catch(() => {
+        return caches.match(event.request);
+      })
+    );
+    return;
+  }
+
+  // --- Stale-While-Revalidate Strategy for Assets ---
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {
         const fetchedResponse = fetch(event.request).then(networkResponse => {
-          // Only cache successful same-origin responses or specific allowed CDNs
           if (networkResponse.ok) {
             cache.put(event.request, networkResponse.clone());
           }

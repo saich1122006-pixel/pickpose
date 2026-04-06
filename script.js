@@ -551,7 +551,7 @@ function buildFilterButtons(poses, container, searchInput) {
     // 1. Advanced Filters Button (at left)
     const btnToggleFilters = document.createElement('button');
     btnToggleFilters.id = 'btnToggleFilters';
-    btnToggleFilters.className = 'nav-icon-btn';
+    btnToggleFilters.className = 'filter-drawer-trigger'; // Match the CSS trigger class
     btnToggleFilters.title = 'Detailed Filters';
     btnToggleFilters.innerHTML = '<i class="fa-solid fa-sliders"></i>';
     container.appendChild(btnToggleFilters);
@@ -661,17 +661,12 @@ const tourSteps = [
     {
         element: '#btnToggleFilters',
         title: 'Advanced Filters',
-        content: 'Refine your results by gender, difficulty, or more using these sliders.'
-    },
-    {
-        element: '#btnSavedPoses',
-        title: 'Your Favorites',
-        content: 'Tap the heart on any pose to save it here for quick inspiration later.'
+        content: 'Fine-tune your results by gender and difficulty levels here.'
     },
     {
         element: '#userProfileIcon',
         title: 'Your Account',
-        content: 'Access your profile, submissions, and settings right here.'
+        content: 'Manage your profile, submissions, and dashboard settings right here.'
     }
 ];
 
@@ -718,9 +713,9 @@ function showTourStep(index) {
     const spotlight = document.querySelector('.tour-spotlight');
     const tooltip = document.getElementById('tourTooltip');
     const nextBtn = document.getElementById('btnTourNext');
-    
+
     if (!target || !spotlight || !tooltip) {
-        // Skip this step if element not found (e.g. hidden mobile vs desktop)
+        // Skip this step if element not found
         currentTourStep++;
         if (currentTourStep < tourSteps.length) showTourStep(currentTourStep);
         else endTour();
@@ -728,40 +723,55 @@ function showTourStep(index) {
     }
 
     const rect = target.getBoundingClientRect();
-    const padding = 8;
-
-    // Position Spotlight
-    spotlight.style.top = (rect.top - padding) + 'px';
-    spotlight.style.left = (rect.left - padding) + 'px';
-    spotlight.style.width = (rect.width + (padding * 2)) + 'px';
-    spotlight.style.height = (rect.height + (padding * 2)) + 'px';
-
-    // Update Content
-    document.getElementById('tourTitle').textContent = step.title;
-    document.getElementById('tourText').textContent = step.content;
-    nextBtn.textContent = index === tourSteps.length - 1 ? 'Finish' : 'Next';
-
-    // Position Tooltip
-    tooltip.classList.remove('visible');
+    const padding = 10;
     
+    // Scroll element into view if needed
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Wait a brief moment for scroll to finish before calculating final position
     setTimeout(() => {
-        const tooltipRect = tooltip.getBoundingClientRect();
-        let top = rect.bottom + 20;
-        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+        const finalRect = target.getBoundingClientRect();
 
-        // Adjust if tooltip goes off screen
-        if (top + tooltipRect.height > window.innerHeight) {
-            top = rect.top - tooltipRect.height - 20;
-        }
-        if (left < 10) left = 10;
-        if (left + tooltipRect.width > window.innerWidth - 10) {
-            left = window.innerWidth - tooltipRect.width - 10;
+        // Highlight Target (Make it pop through the dark overlay)
+        target.classList.add('tour-target-active');
+        target.style.zIndex = '10007'; // Above spotlight (10006)
+        if (window.getComputedStyle(target).position === 'static') {
+            target.style.position = 'relative';
         }
 
-        tooltip.style.top = top + 'px';
-        tooltip.style.left = left + 'px';
-        tooltip.classList.add('visible');
-    }, 100);
+        // Position Spotlight
+        spotlight.style.top = (finalRect.top - padding) + 'px';
+        spotlight.style.left = (finalRect.left - padding) + 'px';
+        spotlight.style.width = (finalRect.width + (padding * 2)) + 'px';
+        spotlight.style.height = (finalRect.height + (padding * 2)) + 'px';
+
+        // Update Content
+        document.getElementById('tourTitle').textContent = step.title;
+        document.getElementById('tourText').textContent = step.content;
+        nextBtn.textContent = index === tourSteps.length - 1 ? 'Finish' : 'Next';
+
+        // Position Tooltip
+        tooltip.classList.remove('visible');
+        
+        setTimeout(() => {
+            const tooltipRect = tooltip.getBoundingClientRect();
+            let top = finalRect.bottom + 25;
+            let left = finalRect.left + (finalRect.width / 2) - (tooltipRect.width / 2);
+
+            // Adjust if tooltip goes off screen
+            if (top + tooltipRect.height > window.innerHeight) {
+                top = finalRect.top - tooltipRect.height - 25;
+            }
+            if (left < 10) left = 10;
+            if (left + tooltipRect.width > window.innerWidth - 10) {
+                left = window.innerWidth - tooltipRect.width - 10;
+            }
+
+            tooltip.style.top = top + 'px';
+            tooltip.style.left = left + 'px';
+            tooltip.classList.add('visible');
+        }, 100);
+    }, 400); // Wait for scroll animation
 }
 
 function endTour() {
@@ -770,6 +780,14 @@ function endTour() {
         overlay.style.opacity = '0';
         setTimeout(() => overlay.style.display = 'none', 300);
     }
+    
+    // Final cleanup of target styling
+    document.querySelectorAll('.tour-target-active').forEach(el => {
+        el.classList.remove('tour-target-active');
+        el.style.zIndex = '';
+        el.style.position = '';
+    });
+
     localStorage.setItem('pickpose_tour_complete', 'true');
     logEvent(analytics, 'feature_tour_complete', { step: currentTourStep });
 }
@@ -1417,6 +1435,17 @@ function updateHeaderAuthUI() {
                 }
             });
         }
+        
+        // Admin Shortcut for saich@pickpose.app
+        const btnAdmin = document.getElementById('btnAdminDashboard');
+        if (btnAdmin) {
+            if (user.email === 'saich@pickpose.app') {
+                btnAdmin.classList.remove('hidden');
+                btnAdmin.onclick = () => window.location.href = 'admin.html';
+            } else {
+                btnAdmin.classList.add('hidden');
+            }
+        }
     } else {
         btnLogin.classList.remove('hidden');
         btnSignup.classList.remove('hidden');
@@ -1464,11 +1493,13 @@ async function openProfileDetails() {
     document.body.style.overflow = 'hidden';
 }
 
-// --- MODAL & 360 SPIN LOGIC ---
-let isDragging = false;
-let startX = 0;
-let currentFrame = 0;
-let activePoseImages = [];
+// --- MODAL & ZOOM LOGIC ---
+let zoomState = { scale: 1, x: 0, y: 0 };
+let isZooming = false;
+let lastTouchDist = 0;
+let lastTouchX = 0;
+let lastTouchY = 0;
+// activePoseContext is already declared globally at line 16
 
 function setupModal() {
     const modal = document.getElementById('poseModal');
@@ -1478,11 +1509,22 @@ function setupModal() {
     const shareMenu = document.getElementById('shareMenu');
     const btnShare = document.getElementById('btnShare');
     const closeShareMenu = document.getElementById('closeShareMenu');
+    const modalBgClick = document.getElementById('poseModal');
+
+    const resetZoom = () => {
+        zoomState = { scale: 1, x: 0, y: 0 };
+        updateZoomTransform();
+    };
+
+    const updateZoomTransform = () => {
+        modalImg.style.transform = `translate(${zoomState.x}px, ${zoomState.y}px) scale(${zoomState.scale})`;
+    };
 
     const hideModal = () => {
         modal.classList.add('hidden');
         shareMenu.classList.add('hidden');
         document.body.style.overflow = 'auto';
+        resetZoom();
     };
     closeModalBtn.addEventListener('click', hideModal);
     modalBgClick.addEventListener('click', hideModal);
@@ -1558,80 +1600,107 @@ function setupModal() {
         document.body.removeChild(tempInput);
     }
 
-    // --- Touch Gestures for Mobile ---
-    modal.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-        touchStartY = e.changedTouches[0].screenY;
-    }, { passive: true });
-
-    modal.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        touchEndY = e.changedTouches[0].screenY;
-        handleSwipe();
-    }, { passive: true });
-
-    function handleSwipe() {
-        const dx = touchEndX - touchStartX;
-        const dy = touchEndY - touchStartY;
-        const absX = Math.abs(dx);
-        const absY = Math.abs(dy);
-
-        // Min swipe distance of 50px
-        if (Math.max(absX, absY) > 50) {
-            if (absX > absY) {
-                // Horizontal Swipe
-                if (dx > 0) prevPose();
-                else nextPose();
-            } else {
-                // Vertical Swipe
-                if (dy > 100) hideModal(); // Swipe down to close
-            }
+    function prevPose() {
+        const idx = currentFilteredPoses.findIndex(p => p.docId === activePoseContext.docId);
+        if (idx > 0) {
+            resetZoom();
+            openModal(currentFilteredPoses[idx - 1]);
         }
     }
 
     function nextPose() {
         const idx = currentFilteredPoses.findIndex(p => p.docId === activePoseContext.docId);
         if (idx !== -1 && idx < currentFilteredPoses.length - 1) {
+            resetZoom();
             openModal(currentFilteredPoses[idx + 1]);
         }
     }
 
-    function prevPose() {
-        const idx = currentFilteredPoses.findIndex(p => p.docId === activePoseContext.docId);
-        if (idx > 0) {
-            openModal(currentFilteredPoses[idx - 1]);
+    // --- ZOOM & PAN ENGINE ---
+    
+    // Double Tap / Click to toggle zoom
+    modalImg.addEventListener('dblclick', (e) => {
+        if (zoomState.scale > 1) {
+            resetZoom();
+        } else {
+            zoomState.scale = 2.5;
+            // Center on click point
+            const rect = modalImg.getBoundingClientRect();
+            updateZoomTransform();
         }
-    }
+    });
+
+    // Mouse Wheel Zoom
+    imgWrapper.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newScale = zoomState.scale * delta;
+        if (newScale >= 1 && newScale <= 4) {
+            zoomState.scale = newScale;
+            updateZoomTransform();
+        }
+    }, { passive: false });
+
+    // Touch Handles for Pinch & Pan
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+
+    imgWrapper.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            isZooming = true;
+            lastTouchDist = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+        } else if (e.touches.length === 1 && zoomState.scale > 1) {
+            isPanning = true;
+            panStartX = e.touches[0].pageX - zoomState.x;
+            panStartY = e.touches[0].pageY - zoomState.y;
+        }
+        
+        // For swipe navigation
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    imgWrapper.addEventListener('touchmove', (e) => {
+        if (isZooming && e.touches.length === 2) {
+            e.preventDefault();
+            const dist = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+            const delta = dist / lastTouchDist;
+            const newScale = zoomState.scale * delta;
+            if (newScale >= 1 && newScale <= 5) {
+                zoomState.scale = newScale;
+                updateZoomTransform();
+            }
+            lastTouchDist = dist;
+        } else if (isPanning && e.touches.length === 1) {
+            e.preventDefault();
+            zoomState.x = e.touches[0].pageX - panStartX;
+            zoomState.y = e.touches[0].pageY - panStartY;
+            updateZoomTransform();
+        }
+    }, { passive: false });
+
+    imgWrapper.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) isZooming = false;
+        if (e.touches.length === 0) isPanning = false;
+
+        // Handle swipe navigation only if NOT zoomed
+        if (zoomState.scale <= 1.1) {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        }
+    });
 
     // Prevent default ghost drag
     modalImg.addEventListener('dragstart', (e) => e.preventDefault());
 
-    imgWrapper.addEventListener('mousedown', (e) => {
-        if (activePoseImages.length <= 1) return;
-        isDragging = true;
-        startX = e.clientX;
-        imgWrapper.style.cursor = 'grabbing';
-    });
-
-    window.addEventListener('mousemove', (e) => {
-        if (!isDragging || activePoseImages.length <= 1) return;
-
-        const dx = e.clientX - startX;
-        const sensitivity = 40;
-
-        if (Math.abs(dx) > sensitivity) {
-            const frameShift = dx > 0 ? -1 : 1;
-            currentFrame = (currentFrame + frameShift + activePoseImages.length) % activePoseImages.length;
-            modalImg.src = activePoseImages[currentFrame];
-            startX = e.clientX;
-        }
-    });
-
-    window.addEventListener('mouseup', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        imgWrapper.style.cursor = activePoseImages.length > 1 ? 'e-resize' : 'default';
-    });
 
     // Setup Favorite Heart clicking
     const btnFavorite = document.getElementById('btnFavorite');
@@ -1689,11 +1758,12 @@ function openModal(pose) {
     const modalTags = document.getElementById('modalTags');
     const btnFavorite = document.getElementById('btnFavorite');
 
-    activePoseImages = pose.images;
-    currentFrame = 0;
-    activePoseContext = pose; // Save for heart toggle
-
-    modalImg.src = activePoseImages[currentFrame];
+    activePoseContext = pose; 
+    modalImg.src = pose.images[0];
+    
+    // Reset zoom state on open
+    zoomState = { scale: 1, x: 0, y: 0 };
+    modalImg.style.transform = `translate(0,0) scale(1)`;
     
     const diff = pose.difficulty || 'beginner';
     modalTitle.innerHTML = `<span>${pose.title || ''}</span> <span class="difficulty-btn ${diff}" style="font-size:10px; padding:3px 8px; margin-left:8px; border-radius:10px;">${diff}</span>`;
@@ -1735,12 +1805,6 @@ function openModal(pose) {
 
     modal.classList.remove('hidden');
 
-    if (activePoseImages.length > 1) {
-        imgWrapper.style.cursor = 'e-resize';
-        modalTitle.textContent = pose.title + " 🔄";
-    } else {
-        imgWrapper.style.cursor = 'default';
-    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

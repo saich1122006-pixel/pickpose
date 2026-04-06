@@ -144,9 +144,15 @@
             <a href="index.html" class="nav-link logo-text">pickpose</a>
         </div>
         <div class="nav-center">
+            <!-- HIDDEN DECOYS to capture browser autofill -->
+            <div style="position: absolute; left: -9999px; top: -9999px; height: 1px; width: 1px; overflow: hidden; opacity: 0; pointer-events: none;">
+                <input type="text" name="pickpose_email_hook" tabindex="-1">
+                <input type="password" name="pickpose_pass_hook" tabindex="-1">
+            </div>
+            
             <div class="top-search-bar">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" id="searchInput" placeholder="Search photos...">
+                <input type="search" id="searchInput" placeholder="Search photos..." autocomplete="off" name="pp_search_query" spellcheck="false">
             </div>
         </div>
 
@@ -175,7 +181,6 @@
         </div>
     </header>
 
-    <!-- Main category row (Compressed) -->
     <div class="filter-scroll" id="categoryFilterWrapper">
         <div class="filter-container" id="filterContainer">
             <!-- Dynamically filled with main categories only -->
@@ -256,6 +261,10 @@
                     <div class="drawer-nav-item hidden" id="btnDrawerInstall">
                         <i class="fa-solid fa-download"></i>
                         <span>Install PickPose</span>
+                    </div>
+                    <div class="drawer-nav-item hidden" id="btnAdminDashboard">
+                        <i class="fa-solid fa-gauge-high" style="color: var(--gold-accent);"></i>
+                        <span style="color: var(--gold-accent); font-weight: 700;">Admin Dashboard</span>
                     </div>
                     <div class="drawer-nav-item" id="btnReplayTour">
                         <i class="fa-solid fa-wand-magic-sparkles"></i>
@@ -568,13 +577,15 @@
             position: fixed;
             inset: 0;
             z-index: 10005;
-            background: rgba(0,0,0,0.8);
+            background: transparent; /* Changed from rgba(0,0,0,0.8) to allow spotlight to shine through */
             pointer-events: none;
             transition: opacity 0.3s;
         }
         .tour-spotlight {
             position: absolute;
-            box-shadow: 0 0 0 9999px rgba(0,0,0,0.8), 0 0 20px rgba(200, 160, 60, 0.4);
+            background: transparent; /* Ensure the icon shines through */
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.85); /* Darken everything else */
+            border: 2px solid var(--gold-accent); /* Golden ring around the icon */
             border-radius: 12px;
             pointer-events: auto;
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
