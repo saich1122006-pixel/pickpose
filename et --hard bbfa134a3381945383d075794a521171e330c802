@@ -1,0 +1,54 @@
+[33mcommit 5928226023d3eb9daf1e7745164fe95d43ab2beb[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Merge: 70442c9 d05e153
+Author: saich1122006-pixel.com <saich1122006@gmail.com>
+Date:   Tue Apr 7 02:38:15 2026 +0530
+
+    Merge branch 'main' of https://github.com/saich1122006-pixel/pickpose
+
+[33mcommit 70442c9c36da6ce36b7e130acfdc7ed7fe74ecea[m
+Author: saich1122006-pixel.com <saich1122006@gmail.com>
+Date:   Tue Apr 7 02:37:24 2026 +0530
+
+    removing google signup
+
+[33mcommit d05e153a03955d8e4f5319a3fa64d907d6f07538[m
+Author: saich1122006-pixel.com <saich1122006@gmail.com>
+Date:   Tue Apr 7 02:22:43 2026 +0530
+
+    removing google signup
+
+[33mcommit bbfa134a3381945383d075794a521171e330c802[m
+Author: saich1122006-pixel.com <saich1122006@gmail.com>
+Date:   Mon Apr 6 20:41:00 2026 +0530
+
+    update
+
+[33mcommit 8352f1b481c7c3369e45ee2f4eac01dbcb5df5f1[m
+Author: saich1122006-pixel.com <saich1122006@gmail.com>
+Date:   Mon Apr 6 18:56:37 2026 +0530
+
+    update all
+
+[33mcommit 3d2576e0b9cf3480a860a5bdecd217d4c62adfd4[m
+Author: saich1122006-pixel.com <saich1122006@gmail.com>
+Date:   Sun Apr 5 00:38:25 2026 +0530
+
+    update admin panel and homepage
+
+[33mcommit 676bb09e16a16e30b1979532ff0bf5b8ef09e0e4[m
+Author: saich1122006-pixel.com <saich1122006@gmail.com>
+Date:   Sat Apr 4 13:54:16 2026 +0530
+
+    update admin and home panel
+
+[33mcommit f3b8164658b2f5f2fad6f76c8a3ea52444078143[m
+Author: saich1122006-pixel.com <saich1122006@gmail.com>
+Date:   Sat Apr 4 03:20:01 2026 +0530
+
+    update admin panel and homepage
+
+[33mcommit 22da7f73cb31d6668169095fd9b9dcbc068c51fc[m
+Author: saich1122006-pixel.com <saich1122006@gmail.com>
+Date:   Sat Apr 4 01:17:24 2026 +0530
+
+    first commit
