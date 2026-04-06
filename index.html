@@ -170,10 +170,10 @@
             </button>
             <i class="fa-solid fa-circle-user hidden" id="userProfileIcon"
                 style="font-size: 1.25rem; color: #a1a1aa; cursor: pointer;" title="Your Account"></i>
-            <button class="nav-link" id="btnNavLogin"
+            <button class="nav-link hidden" id="btnNavLogin"
                 style="background: none; border: none; font-size: 14px; font-weight: 500; cursor: pointer;">Log
                 In</button>
-            <button class="btn-signup" id="btnNavSignup" style="border: none; cursor: pointer; padding: 8px 16px;">Sign
+            <button class="btn-signup hidden" id="btnNavSignup" style="border: none; cursor: pointer; padding: 8px 16px;">Sign
                 Up</button>
             <button class="nav-link hidden" id="btnNavLogout"
                 style="background: none; border: none; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-muted);">Log
@@ -453,18 +453,6 @@
                 <!-- START MENU -->
                 <div id="authModeSelection" class="auth-step">
                     <p class="auth-desc">Choose an option to continue.</p>
-                    <button id="btnGoogleLogin" class="btn-outline"
-                        style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
-                            alt="Google" style="width: 18px; height: 18px;">
-                        Continue with Google
-                    </button>
-                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                        <hr style="flex: 1; border: none; border-top: 1px solid var(--border);">
-                        <span
-                            style="padding: 0 10px; color: var(--text-muted); font-size: 12px; font-weight: 500;">OR</span>
-                        <hr style="flex: 1; border: none; border-top: 1px solid var(--border);">
-                    </div>
                     <button id="btnGoToLogin" class="btn-primary" style="margin-bottom: 15px;">Log In with
                         Email</button>
                     <button id="btnGoToSignup" class="btn-outline">Create New Account</button>
