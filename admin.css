@@ -170,6 +170,146 @@ body {
     transform: translateY(0);
 }
 
+/* ============== OTP LOGIN ============== */
+.login-form-section {
+    display: none;
+}
+
+.login-form-section.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.forgot-password-link {
+    text-align: center;
+    margin-top: 12px;
+}
+
+.btn-forgot {
+    background: none;
+    border: none;
+    color: var(--admin-accent);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.btn-forgot:hover {
+    color: var(--admin-accent-hover);
+    text-decoration: underline;
+}
+
+.btn-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: var(--admin-accent);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font);
+    margin-bottom: 20px;
+    transition: color 0.2s;
+}
+
+.btn-back:hover {
+    color: var(--admin-accent-hover);
+}
+
+/* OTP Input Section */
+.otp-label {
+    display: block;
+    color: var(--admin-text-muted);
+    font-size: 13px;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
+.otp-inputs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.otp-input {
+    width: 40px;
+    height: 50px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    border: 2px solid var(--admin-border);
+    border-radius: var(--admin-radius-sm);
+    background: var(--admin-bg);
+    color: var(--admin-text);
+    transition: border-color 0.2s;
+}
+
+.otp-input:focus {
+    outline: none;
+    border-color: var(--admin-accent);
+}
+
+.otp-input-section {
+    display: none;
+}
+
+.otp-input-section.active {
+    display: block;
+}
+
+.otp-send-section {
+    display: block;
+}
+
+.otp-send-section.hidden {
+    display: none;
+}
+
+.otp-message, .otp-timer {
+    text-align: center;
+    font-size: 13px;
+    color: var(--admin-text-muted);
+    margin-bottom: 16px;
+}
+
+.otp-message.success {
+    color: var(--admin-success);
+}
+
+.otp-message.error {
+    color: var(--admin-danger);
+}
+
+.btn-resend {
+    width: 100%;
+    padding: 12px;
+    background: none;
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius-sm);
+    color: var(--admin-accent);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    margin-top: 12px;
+    transition: border-color 0.2s;
+}
+
+.btn-resend:hover {
+    border-color: var(--admin-accent);
+}
+
 /* ============== DASHBOARD LAYOUT ============== */
 .admin-dashboard {
     display: flex;
@@ -976,6 +1116,7 @@ body {
     margin-top: 28px;
     padding-top: 20px;
     border-top: 1px solid var(--admin-border);
+    flex-wrap: wrap;
 }
 
 .btn-primary {
@@ -992,6 +1133,9 @@ body {
     font-family: var(--font);
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.2s;
+    white-space: nowrap;
+    min-height: 44px;
+    justify-content: center;
 }
 
 .btn-primary:hover {
@@ -1197,6 +1341,39 @@ input:checked + .slider:before {
 @media (max-width: 480px) {
     .checkbox-grid {
         grid-template-columns: 1fr;
+    }
+
+    .btn-primary {
+        padding: 12px 16px;
+        font-size: 13px;
+        gap: 6px;
+        flex: 1;
+    }
+
+    .btn-primary i {
+        font-size: 16px;
+    }
+
+    .form-actions {
+        justify-content: stretch;
+    }
+
+    .login-card {
+        padding: 24px 16px;
+    }
+
+    .input-group {
+        padding: 0 12px;
+    }
+
+    .otp-inputs {
+        gap: 6px;
+    }
+
+    .otp-input {
+        width: 36px;
+        height: 44px;
+        font-size: 20px;
     }
 }
 

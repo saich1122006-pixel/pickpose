@@ -1,13 +1,14 @@
 import { db, auth } from './firebase-config.js';
-import { collection, getDocs, getDoc, addDoc, deleteDoc, doc, query, where, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, getDocs, getDoc, setDoc, addDoc, deleteDoc, doc, query, where, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 let adminPoses = [];
 let selectedDocIds = new Set();
+let pinnedCategories = []; // Loaded from app_metadata
 let uploadedImagesQueue = []; // Array of base64 strings for multi-upload
 
 // List of allowed admin emails
-const ADMIN_EMAILS = ['admin@pickpose.com'];
+const ADMIN_EMAILS = ['saich@pickpose.app'];
 
 const GENDER_ENABLED_KEY = 'pickpose_gender_enabled';
 
@@ -206,10 +207,22 @@ function updateBulkBar() {
     selectAllCb.checked = count > 0 && count === adminPoses.length;
 }
 
-function updateStats(poses) {
+async function updateStats(poses) {
     document.getElementById('totalPoses').textContent = poses.length;
     document.getElementById('malePoses').textContent = poses.filter(p => p.gender === 'male' || p.gender === 'both').length;
     document.getElementById('femalePoses').textContent = poses.filter(p => p.gender === 'female' || p.gender === 'both').length;
+
+    // Fetch Global Stats (Views/Installs)
+    try {
+        const statsSnap = await getDoc(doc(db, "stats", "global"));
+        if (statsSnap.exists()) {
+            const data = statsSnap.data();
+            document.getElementById('statTotalViews').textContent = data.views || 0;
+            document.getElementById('statAppInstalls').textContent = data.installs || 0;
+        }
+    } catch (e) {
+        console.warn("Error fetching global stats:", e);
+    }
 }
 
 function populateAdminCategoryFilter() {
@@ -285,7 +298,184 @@ document.addEventListener('DOMContentLoaded', () => {
             loginScreen.classList.add('hidden');
             dashboard.classList.remove('hidden');
             
-            // Load from Firebase
+            // Load Category Priority
+            try {
+                const catSnap = await getDoc(doc(db, "app_metadata", "categories"));
+                if (catSnap.exists()) {
+                    pinnedCategories = catSnap.data().priorityOrder || [];
+                }
+            } catch (err) {
+                console.error("Failed to load category priority:", err);
+            }
+
+            document.getElementById('btnPushUpdate')?.addEventListener('click', async () => {
+        const msg = document.getElementById('updateMessage').value.trim();
+        const btn = document.getElementById('btnPushUpdate');
+        
+        if (!msg) {
+            showToast('Please enter an update message', true);
+            return;
+        }
+
+        const oldText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Pushing...';
+        btn.disabled = true;
+
+        try {
+            const version = Date.now().toString(); // Simple unique version based on timestamp
+            await setDoc(doc(db, "app_metadata", "broadcast"), {
+                version: version,
+                message: msg,
+                timestamp: new Date().toISOString()
+            });
+            
+            showToast('Update Broadcasted to all users! 📣');
+            document.getElementById('updateMessage').value = '';
+        } catch (err) {
+            console.error("Broadcast failed:", err);
+            showToast('Broadcast failed: ' + err.message, true);
+        }
+
+        btn.innerHTML = oldText;
+        btn.disabled = false;
+    });
+
+    // --- CATEGORY MANAGER LOGIC ---
+    function renderCategoryManager() {
+        const pinnedList = document.getElementById('pinnedCategoryList');
+        const allList = document.getElementById('allCategoryList');
+        if (!pinnedList || !allList) return;
+
+        // Get all unique categories from poses
+        const availableCategories = Array.from(new Set(adminPoses.map(p => p.category?.toLowerCase()).filter(c => c)));
+        availableCategories.sort();
+
+        // 1. Render Pinned
+        pinnedList.innerHTML = '';
+        if (pinnedCategories.length === 0) {
+            pinnedList.innerHTML = '<p class="empty-msg" style="color: var(--text-muted); font-size: 13px;">No pinned categories yet.</p>';
+        } else {
+            pinnedCategories.forEach((cat, index) => {
+                const item = document.createElement('div');
+                item.className = 'category-item';
+                item.innerHTML = `
+                    <span>${cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
+                    <div class="category-controls">
+                        <button class="btn-cat-action move-up" data-index="${index}" title="Move Up"><i class="fa-solid fa-chevron-up"></i></button>
+                        <button class="btn-cat-action move-down" data-index="${index}" title="Move Down"><i class="fa-solid fa-chevron-down"></i></button>
+                        <button class="btn-cat-action unpin" data-cat="${cat}" title="Unpin"><i class="fa-solid fa-thumbtack-slash"></i></button>
+                    </div>
+                `;
+                pinnedList.appendChild(item);
+            });
+        }
+
+        // 2. Render Available (excluding those already pinned)
+        allList.innerHTML = '';
+        const unpinned = availableCategories.filter(c => !pinnedCategories.includes(c));
+        if (unpinned.length === 0) {
+            allList.innerHTML = '<p class="empty-msg" style="color: var(--text-muted); font-size: 13px;">All categories are pinned.</p>';
+        } else {
+            unpinned.forEach(cat => {
+                const item = document.createElement('div');
+                item.className = 'category-item';
+                item.innerHTML = `
+                    <span>${cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
+                    <div class="category-controls">
+                        <button class="btn-cat-action pin" data-cat="${cat}" title="Pin to Top"><i class="fa-solid fa-thumbtack"></i></button>
+                    </div>
+                `;
+                allList.appendChild(item);
+            });
+        }
+
+        // --- EVENT DELEGATION FOR CATEGORIES ---
+        // Moved to a more stable logic: we use the container and only verify once.
+        // The previous check might fail if the element is re-rendered by different tabs.
+        setupCategoryListeners();
+    }
+
+    function setupCategoryListeners() {
+        const pinnedList = document.getElementById('pinnedCategoryList');
+        const allList = document.getElementById('allCategoryList');
+        if (!pinnedList || !allList) return;
+
+        // Ensure we only attach once globally
+        if (window.categoryListenersAttached) return;
+        window.categoryListenersAttached = true;
+
+        pinnedList.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-cat-action');
+            if (!btn) return;
+
+            const cat = btn.dataset.cat?.toLowerCase().trim();
+            if (btn.classList.contains('unpin')) {
+                pinnedCategories = pinnedCategories.filter(c => c.toLowerCase().trim() !== cat);
+                saveCategoryPriority();
+            } else if (btn.classList.contains('move-up')) {
+                const idx = parseInt(btn.dataset.index);
+                if (idx > 0) {
+                    [pinnedCategories[idx], pinnedCategories[idx-1]] = [pinnedCategories[idx-1], pinnedCategories[idx]];
+                    saveCategoryPriority();
+                }
+            } else if (btn.classList.contains('move-down')) {
+                const idx = parseInt(btn.dataset.index);
+                if (idx < pinnedCategories.length - 1) {
+                    [pinnedCategories[idx], pinnedCategories[idx+1]] = [pinnedCategories[idx+1], pinnedCategories[idx]];
+                    saveCategoryPriority();
+                }
+            }
+        });
+
+        allList.addEventListener('click', (e) => {
+            const btn = e.target.closest('.pin');
+            if (!btn) return;
+            
+            const catToPin = btn.dataset.cat?.toLowerCase().trim();
+            if (catToPin && !pinnedCategories.some(c => c.toLowerCase().trim() === catToPin)) {
+                pinnedCategories.push(catToPin);
+                saveCategoryPriority();
+            }
+        });
+    }
+
+    async function saveCategoryPriority() {
+        renderCategoryManager();
+        try {
+            await setDoc(doc(db, "app_metadata", "categories"), {
+                priorityOrder: pinnedCategories,
+                updatedAt: new Date().toISOString()
+            });
+            showToast('Category priority updated! 🏷️');
+            
+            // Also update the version in broadcast to trigger a refresh in users' browsers if needed
+            // (Optional, but ensures users see the new order immediately)
+        } catch (err) {
+            console.error("Save failed:", err);
+            showToast("Failed to save order", true);
+        }
+    }
+
+    // --- TAB SWITCH ENGINE ---
+    document.querySelectorAll('.sidebar-link[data-tab]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const tab = link.dataset.tab;
+            
+            // UI
+            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+            
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`${tab}Tab`).classList.add('active');
+            
+            document.getElementById('pageTitle').textContent = link.querySelector('span').textContent;
+
+            if (tab === 'categories') renderCategoryManager();
+        });
+    });
+
+    // Sign out from top bar
             adminPoses = await loadPosesData();
             populateAdminCategoryFilter();
             renderAdminGrid();
@@ -1094,6 +1284,25 @@ document.getElementById('messagesGrid')?.addEventListener('click', (e) => {
     if (btn.classList.contains('btn-delete')) {
         deleteMessage(docId);
     }
+});
+
+// --- ADMIN SHARING CENTER ---
+// Use the custom Firebase Hosting URL if on localhost or use window.location.origin
+const PRODUCTION_URL = "https://pickpose.app";
+const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const APP_URL = IS_LOCAL ? PRODUCTION_URL : window.location.origin + window.location.pathname.replace('admin.html', 'index.html');
+
+const INVITE_MESSAGE = `Elevate your photography with PickPose. Access a curated gallery of professional poses directly on your device. Download the official app now: ${APP_URL}/install 📸✨`;
+
+document.getElementById('btnCopyAppLink')?.addEventListener('click', () => {
+    navigator.clipboard.writeText(INVITE_MESSAGE).then(() => {
+        showToast("Invitation copied to clipboard!");
+    });
+});
+
+document.getElementById('btnWhatsAppShare')?.addEventListener('click', () => {
+    const url = `https://wa.me/?text=${encodeURIComponent(INVITE_MESSAGE)}`;
+    window.open(url, '_blank');
 });
 
 // Attach to window as backup (optional but good for compatibility)

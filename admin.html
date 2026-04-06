@@ -54,7 +54,9 @@
             </div>
             <h1>Admin Access</h1>
             <p class="login-subtitle">Enter your credentials to manage Pickpose</p>
-            <form id="loginForm" autocomplete="off">
+            
+            <!-- Login Form -->
+            <form id="loginForm" autocomplete="off" class="login-form-section active">
                 <div class="input-group">
                     <i class="fa-solid fa-user"></i>
                     <input type="email" id="loginUser" placeholder="Email Address" required>
@@ -68,6 +70,7 @@
                     <span>Sign In</span>
                     <i class="fa-solid fa-arrow-right"></i>
                 </button>
+                <div id="otpError" class="login-error hidden"></div>
             </form>
         </div>
     </div>
@@ -96,6 +99,10 @@
                 <a href="#" class="sidebar-link" data-tab="messages">
                     <i class="fa-solid fa-envelope"></i>
                     <span>Messages</span>
+                </a>
+                <a href="#" class="sidebar-link" data-tab="categories">
+                    <i class="fa-solid fa-tags"></i>
+                    <span>Categories</span>
                 </a>
             </nav>
             <div class="sidebar-footer">
@@ -147,6 +154,45 @@
                         <div class="stat-info">
                             <span class="stat-number" id="femalePoses">0</span>
                             <span class="stat-label">Female</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: #00d2ff;"><i class="fa-solid fa-eye"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="statTotalViews">0</span>
+                            <span class="stat-label">Total Views</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: #ff9f43;"><i class="fa-solid fa-mobile-screen-button"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-number" id="statAppInstalls">0</span>
+                            <span class="stat-label">App Installs</span>
+                        </div>
+                    </div>
+                    <div class="stat-card share-card" style="grid-column: span 1; background: rgba(0, 255, 136, 0.05); border: 1px solid rgba(0, 255, 136, 0.2);">
+                        <div class="stat-icon" style="color: #00ff88; font-size: 24px;"><i class="fa-solid fa-share-nodes"></i></div>
+                        <div class="stat-info" style="width: 100%;">
+                            <span class="stat-label" style="color: #00ff88; font-weight: 600; font-size: 11px;">DIRECT APP INSTALL LINK</span>
+                            <div class="share-actions" style="margin-top: 8px; display: flex; gap: 8px;">
+                                <button type="button" id="btnCopyAppLink" class="btn-stat-action" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                    <i class="fa-solid fa-copy"></i> Copy
+                                </button>
+                                <button type="button" id="btnWhatsAppShare" class="btn-stat-action" style="background: rgba(37, 211, 102, 0.15); border: 1px solid rgba(37, 211, 102, 0.3); color: #25d366; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                    <i class="fa-brands fa-whatsapp"></i> Invite
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-card broadcast-card" style="background: rgba(160, 32, 240, 0.05); border: 1px solid rgba(160, 32, 240, 0.2);">
+                        <div class="stat-icon" style="color: #a020f0;"><i class="fa-solid fa-bullhorn"></i></div>
+                        <div class="stat-info" style="width: 100%;">
+                            <span class="stat-label" style="color: #a020f0; font-weight: 600; font-size: 11px;">PUSH FEATURE UPDATE</span>
+                            <textarea id="updateMessage" placeholder="What's new? (e.g. New 360° Poses added!)" 
+                                style="width: 100%; margin-top: 8px; padding: 6px; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 11px; resize: none; min-height: 40px;"></textarea>
+                            <button id="btnPushUpdate" class="btn-stat-action" style="margin-top: 8px; width: 100%; padding: 6px; font-size: 11px; background: #a020f0; color: #fff; border: none; border-radius: 4px; cursor: pointer;">
+                                <i class="fa-solid fa-paper-plane"></i> Broadcast App-Wide
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -317,6 +363,67 @@
                 </div>
                 <div id="messagesGrid" class="messages-list">
                     <!-- Loaded dynamically -->
+                </div>
+            </section>
+            <!-- Categories Tab (NEW) -->
+            <section id="categoriesTab" class="tab-content">
+                <div class="category-manager-container">
+                    <div class="form-header">
+                        <h3>Category Manager</h3>
+                        <p>Pin categories to the top of the mobile navigation bar and set their order. Unpinned categories stay alphabetical.</p>
+                    </div>
+                    
+                    <div class="category-manager-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
+                        <!-- Pinned Categories -->
+                        <div class="glass-card" style="padding: 20px;">
+                            <h4 style="margin-bottom: 15px; color: var(--gold-accent); display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-thumbtack"></i> Pinned Categories
+                            </h4>
+                            <div id="pinnedCategoryList" class="category-list-sortable">
+                                <!-- Pinned categories loaded here -->
+                                <p class="empty-msg" style="color: var(--text-muted); font-size: 13px;">No pinned categories yet.</p>
+                            </div>
+                        </div>
+
+                        <!-- All Available Categories -->
+                        <div class="glass-card" style="padding: 20px;">
+                            <h4 style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-list"></i> Available Categories
+                            </h4>
+                            <div id="allCategoryList" class="category-list-available">
+                                <!-- All categories loaded here -->
+                                <p class="empty-msg" style="color: var(--text-muted); font-size: 13px;">Loading categories...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <style>
+                        .category-item {
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            padding: 12px 16px;
+                            background: rgba(255,255,255,0.05);
+                            border: 1px solid rgba(255,255,255,0.1);
+                            border-radius: 8px;
+                            margin-bottom: 10px;
+                            font-size: 14px;
+                        }
+                        .category-item:hover { background: rgba(255,255,255,0.08); }
+                        .category-controls { display: flex; gap: 8px; }
+                        .btn-cat-action {
+                            background: none;
+                            border: none;
+                            color: var(--text-muted);
+                            cursor: pointer;
+                            font-size: 14px;
+                            padding: 4px;
+                            transition: color 0.2s;
+                        }
+                        .btn-cat-action:hover { color: #fff; }
+                        .btn-cat-action.pin:hover { color: var(--gold-accent); }
+                        .btn-cat-action.unpin:hover { color: #ff4d4d; }
+                    </style>
                 </div>
             </section>
         </main>

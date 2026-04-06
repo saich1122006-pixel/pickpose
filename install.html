@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download PickPose | The Ultimate Photography Pose App</title>
+    
+    <!-- App Store Aesthetic -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#c8a03c">
+    <link rel="apple-touch-icon" href="images/pickpose-logo.png">
+
+    <style>
+        :root {
+            --bg: #0f0f13;
+            --card-bg: #1a1a23;
+            --accent: #00ff88;
+            --text-main: #e8e8ed;
+            --text-muted: #8888a0;
+            --font: 'Inter', sans-serif;
+            --brand-green: #34c759;
+            --brand-blue: #007aff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--font); background: var(--bg); color: var(--text-main); overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+
+        .store-container { max-width: 500px; margin: 0 auto; padding: 24px 20px 100px; }
+
+        /* Store Header */
+        .store-header { display: flex; gap: 24px; align-items: center; margin-bottom: 24px; padding-top: 20px; }
+        .app-icon { width: 100px; height: 100px; border-radius: 22%; overflow: hidden; background: #000; box-shadow: 0 8px 16px rgba(0,0,0,0.3); flex-shrink: 0; }
+        .app-icon img { width: 100%; height: 100%; object-fit: contain; }
+        
+        .header-info h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.5px; }
+        .developer { font-size: 14px; font-weight: 500; color: var(--brand-blue); margin-bottom: 8px; }
+        .verified-badge { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--brand-green); text-transform: uppercase; }
+
+        /* Quick Stats */
+        .quick-stats { display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 16px 0; margin-bottom: 24px; }
+        .stat-item { text-align: center; flex: 1; }
+        .stat-val { font-size: 15px; font-weight: 700; display: block; margin-bottom: 2px; }
+        .stat-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Install Buttons */
+        .install-section { margin-bottom: 32px; }
+        .btn-install { width: 100%; padding: 14px; border-radius: 12px; background: var(--brand-blue); color: #fff; font-size: 16px; font-weight: 600; border: none; cursor: pointer; transition: transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3); }
+        .btn-install:active { transform: scale(0.97); }
+        .btn-install.hidden { display: none; }
+
+        .ios-instruction { background: var(--card-bg); border-radius: 16px; padding: 20px; border: 1px dashed rgba(255,255,255,0.15); display: none; }
+        .ios-instruction.visible { display: block; animation: slideBottom 0.5s ease-out; }
+        .ios-instruction h3 { font-size: 16px; margin-bottom: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .instruction-step { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; color: var(--text-muted); }
+        .icon-box { background: rgba(255,255,255,0.08); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--text-main); flex-shrink: 0; }
+
+        /* App Previews */
+        .preview-section { margin-bottom: 32px; }
+        .preview-section h2 { font-size: 18px; margin-bottom: 16px; font-weight: 600; }
+        .preview-slider { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
+        .preview-slider::-webkit-scrollbar { display: none; }
+        .preview-card { flex-shrink: 0; width: 200px; aspect-ratio: 9/16; background: var(--card-bg); border-radius: 12px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.05); }
+        .preview-card img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Description */
+        .description-section { margin-bottom: 40px; }
+        .description-section h2 { font-size: 18px; margin-bottom: 12px; font-weight: 600; }
+        .description-text { font-size: 14px; line-height: 1.6; color: var(--text-muted); }
+
+        /* Info Grid */
+        .info-grid { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 24px; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 13px; }
+        .info-label { color: var(--text-muted); }
+        .info-val { font-weight: 500; text-align: right; }
+
+        /* Animations */
+        @keyframes slideBottom { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Toast Popup (from existing system) */
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 24px; border-radius: 30px; font-size: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); display: none; align-items: center; gap: 10px; z-index: 9999; }
+        .toast.visible { display: flex; }
+    </style>
+</head>
+<body>
+
+    <div class="store-container">
+        <!-- Store Header -->
+        <div class="store-header">
+            <div class="app-icon">
+                <img src="images/pickpose-logo.png" alt="PickPose Icon">
+            </div>
+            <div class="header-info">
+                <h1>PickPose Gallery</h1>
+                <p class="developer">PickPose Studio</p>
+                <div class="verified-badge">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Verified Publisher</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Install Section -->
+        <div class="install-section">
+            <button id="btnStoreInstall" class="btn-install">
+                <i class="fa-solid fa-download"></i>
+                <span id="btnText">Download & Install</span>
+            </button>
+
+            <!-- iOS Instructions (Hidden by default) -->
+            <div id="iosInstruct" class="ios-instruction">
+                <h3><i class="fa-brands fa-apple"></i> Installation Guide</h3>
+                <div class="instruction-step">
+                    <div class="icon-box"><i class="fa-solid fa-arrow-up-from-bracket"></i></div>
+                    <p>Tap the <strong>Share</strong> icon in the Safari bottom bar.</p>
+                </div>
+                <div class="instruction-step">
+                    <div class="icon-box"><i class="fa-solid fa-plus-square"></i></div>
+                    <p>Select <strong>"Add to Home Screen"</strong> from the menu.</p>
+                </div>
+                <div class="instruction-step">
+                    <div class="icon-box"><i class="fa-solid fa-check"></i></div>
+                    <p>Tap <strong>"Add"</strong> in the top right corner.</p>
+                </div>
+            </div>
+            
+            <p id="installMsg" style="text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 12px; display: none;">Preparing official download...</p>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="preview-section">
+            <h2>Screenshots & Gallery</h2>
+            <div class="preview-slider">
+                <div class="preview-card"><img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200" alt="Preview 1"></div>
+                <div class="preview-card"><img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=200" alt="Preview 2"></div>
+                <div class="preview-card"><img src="https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&q=80&w=200" alt="Preview 3"></div>
+                <div class="preview-card"><img src="https://images.unsplash.com/photo-1514315384763-ba401779410f?auto=format&fit=crop&q=80&w=200" alt="Preview 4"></div>
+            </div>
+        </div>
+
+        <!-- Description -->
+        <div class="description-section">
+            <h2>About this app</h2>
+            <p class="description-text">
+                Master the art of posing with PickPose. Access 1000+ professional pose inspirations for photography, modeling, and lifestyle. Featuring smart categories and offline access.<br><br>
+                <strong>Download the official app</strong> to stay ahead of the trend and capture your best shots every single time.
+            </p>
+        </div>
+
+        <!-- Info Grid -->
+        <div class="info-grid">
+            <div class="info-row">
+                <span class="info-label">Size</span>
+                <span class="info-val">325 KB (Cloud Based)</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Developer</span>
+                <span class="info-val">PickPose Studio Inc.</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Privacy Policy</span>
+                <span class="info-val" style="color: var(--brand-blue);">Verified Secure</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast for copying -->
+    <div id="copyToast" class="toast">
+        <i class="fa-solid fa-check"></i>
+        <span>Link copied to clipboard!</span>
+    </div>
+
+    <script src="install.js" type="module"></script>
+</body>
+</html>

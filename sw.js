@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pickpose-v1';
+const CACHE_NAME = 'pickpose-v' + Date.now(); // Dynamic versioning
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -8,15 +8,34 @@ const ASSETS_TO_CACHE = [
   '/script.js',
   '/admin.js',
   '/firebase-config.js',
-  '/images/icon-512x512.png',
+  '/images/pickpose-logo.png',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
 ];
 
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(ASSETS_TO_CACHE))
+  );
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      // Clear old caches
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== CACHE_NAME) {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+    ])
   );
 });
 

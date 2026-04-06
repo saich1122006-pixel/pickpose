@@ -1,5 +1,5 @@
-import { db, auth } from './firebase-config.js';
-import { collection, getDocs, getDoc, setDoc, doc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { db, auth, analytics, logEvent } from './firebase-config.js';
+import { collection, getDocs, getDoc, setDoc, doc, addDoc, query, where, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // No default poses — all content managed via admin panel
@@ -21,6 +21,7 @@ let touchStartY = 0;
 let touchEndX = 0;
 let touchEndY = 0;
 let currentOnboardingSlide = 0;
+let categoryPriority = []; // Loaded from Firestore
 
 // PWA Install Prompt Variable
 let deferredPrompt;
@@ -113,6 +114,88 @@ async function initPickpose() {
 
     setupAuth();
     initOnboarding();
+
+    // --- INCREMENT VISIT COUNTER ---
+    try {
+        const statsRef = doc(db, "stats", "global");
+        await updateDoc(statsRef, { views: increment(1) });
+    } catch (e) {
+        if (e.code === 'not-found') {
+            await setDoc(doc(db, "stats", "global"), { views: 1, installs: 0 });
+        }
+    }
+
+    // --- BROADCAST / UPDATES ---
+    async function checkForUpdates() {
+        try {
+            const broadcastRef = doc(db, "app_metadata", "broadcast");
+            const snap = await getDoc(broadcastRef);
+            
+            if (snap.exists()) {
+                const data = snap.data();
+                const lastSeenVersion = localStorage.getItem('pickpose_last_version');
+                
+                if (data.version && data.version !== lastSeenVersion) {
+                    const modal = document.getElementById('whatsNewModal');
+                    const content = document.getElementById('whatsNewContent');
+                    const btn = document.getElementById('closeWhatsNew');
+                    
+                    if (modal && content && btn) {
+                        content.innerHTML = data.message.replace(/\n/g, '<br>');
+                        modal.classList.remove('hidden');
+                        
+                        btn.addEventListener('click', () => {
+                            modal.classList.add('hidden');
+                            localStorage.setItem('pickpose_last_version', data.version);
+                            logEvent(analytics, 'whats_new_dismissed', { version: data.version });
+                        });
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Error checking updates:", err);
+        }
+    }
+
+    // Initial load check
+    document.addEventListener('DOMContentLoaded', async () => {
+        checkForUpdates();
+        
+        // Load Category Priority for better UX
+        try {
+            const catRef = doc(db, "app_metadata", "categories");
+            const catSnap = await getDoc(catRef);
+            if (catSnap.exists()) {
+                categoryPriority = catSnap.data().priorityOrder || [];
+                // Re-build buttons if data already loaded
+                if (posesData.length > 0) {
+                    const filterContainer = document.getElementById('filterContainer');
+                    const searchInput = document.getElementById('searchInput');
+                    buildFilterButtons(posesData, filterContainer, searchInput);
+                }
+            }
+        } catch (err) {
+            console.error("Failed to load categories priority:", err);
+        }
+
+        // Trigger Tour if first time
+        const tourComplete = localStorage.getItem('pickpose_tour_complete');
+        if (!tourComplete) {
+            // Wait for onboarding to potentially close (if active)
+            setTimeout(() => {
+                if (document.getElementById('onboardingContainer').classList.contains('hidden')) {
+                    startFeatureTour();
+                }
+            }, 1000);
+        }
+    });
+
+    // Replay Tour from Profile
+    document.getElementById('btnReplayTour')?.addEventListener('click', () => {
+        const profileDrawer = document.getElementById('profileDrawer');
+        if (profileDrawer) profileDrawer.classList.add('hidden');
+        startFeatureTour();
+    });
 
     // Load data from Firebase
     posesData = await loadPosesData();
@@ -278,6 +361,7 @@ async function initPickpose() {
 
         // --- SUBMIT POSE MODAL (FOR USERS) ---
         const btnSubmitPose = document.getElementById('btnSubmitPose');
+        const btnSubmitPoseMobile = document.getElementById('btnSubmitPoseMobile');
         const submitPoseModal = document.getElementById('submitPoseModal');
         const closeSubmitPoseModal = document.getElementById('closeSubmitPoseModal');
         const submitPoseModalBg = document.getElementById('submitPoseModalBg');
@@ -297,6 +381,17 @@ async function initPickpose() {
 
         if (btnSubmitPose && submitPoseModal) {
             btnSubmitPose.addEventListener('click', () => {
+                if (!isLoggedIn()) {
+                    window.openAuthModal('authModeSelection');
+                    return;
+                }
+                submitPoseModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            });
+        }
+
+        if (btnSubmitPoseMobile && submitPoseModal) {
+            btnSubmitPoseMobile.addEventListener('click', () => {
                 if (!isLoggedIn()) {
                     window.openAuthModal('authModeSelection');
                     return;
@@ -467,8 +562,20 @@ function buildFilterButtons(poses, container, searchInput) {
         if (p.category) categories.add(p.category.toLowerCase());
     });
     const sortedCategories = Array.from(categories)
-        .filter(cat => cat !== 'favorites') // Exclude 'favorites' since we have a custom button for it
-        .sort();
+        .filter(cat => cat !== 'favorites') // Exclude 'favorites'
+        .sort((a, b) => {
+            const indexA = categoryPriority.indexOf(a);
+            const indexB = categoryPriority.indexOf(b);
+
+            // If both are in priority list, sort by their index
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            // If only A is pinned, it goes first
+            if (indexA !== -1) return -1;
+            // If only B is pinned, it goes first
+            if (indexB !== -1) return 1;
+            // Otherwise, alphabetical
+            return a.localeCompare(b);
+        });
 
     const allBtn = document.createElement('button');
     allBtn.className = 'filter-btn active';
@@ -537,6 +644,135 @@ function buildFilterButtons(poses, container, searchInput) {
 }
 
 
+
+// --- INTERACTIVE FEATURE TOUR ---
+let currentTourStep = 0;
+const tourSteps = [
+    {
+        element: '#filterContainer',
+        title: 'Browse Categories',
+        content: 'Swipe through to find specific styles like Standing, Fashion, or Fitness.'
+    },
+    {
+        element: '#searchInput',
+        title: 'Search Anything',
+        content: 'Typed what you are looking for to find specific tags or poses instantly.'
+    },
+    {
+        element: '#btnToggleFilters',
+        title: 'Advanced Filters',
+        content: 'Refine your results by gender, difficulty, or more using these sliders.'
+    },
+    {
+        element: '#btnSavedPoses',
+        title: 'Your Favorites',
+        content: 'Tap the heart on any pose to save it here for quick inspiration later.'
+    },
+    {
+        element: '#userProfileIcon',
+        title: 'Your Account',
+        content: 'Access your profile, submissions, and settings right here.'
+    }
+];
+
+function startFeatureTour() {
+    currentTourStep = 0;
+    
+    // Create UI if not exists
+    let overlay = document.querySelector('.tour-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'tour-overlay';
+        overlay.innerHTML = `
+            <div class="tour-spotlight"></div>
+            <div class="tour-tooltip" id="tourTooltip">
+                <h4 id="tourTitle"></h4>
+                <p id="tourText"></p>
+                <div class="tour-controls">
+                    <button class="btn-tour-skip" id="btnTourSkip">Skip Tour</button>
+                    <button class="btn-tour-next" id="btnTourNext">Next</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        document.getElementById('btnTourSkip').addEventListener('click', endTour);
+        document.getElementById('btnTourNext').addEventListener('click', () => {
+            currentTourStep++;
+            if (currentTourStep < tourSteps.length) {
+                showTourStep(currentTourStep);
+            } else {
+                endTour();
+            }
+        });
+    }
+    
+    overlay.style.display = 'block';
+    overlay.style.opacity = '1';
+    showTourStep(0);
+}
+
+function showTourStep(index) {
+    const step = tourSteps[index];
+    const target = document.querySelector(step.element);
+    const spotlight = document.querySelector('.tour-spotlight');
+    const tooltip = document.getElementById('tourTooltip');
+    const nextBtn = document.getElementById('btnTourNext');
+    
+    if (!target || !spotlight || !tooltip) {
+        // Skip this step if element not found (e.g. hidden mobile vs desktop)
+        currentTourStep++;
+        if (currentTourStep < tourSteps.length) showTourStep(currentTourStep);
+        else endTour();
+        return;
+    }
+
+    const rect = target.getBoundingClientRect();
+    const padding = 8;
+
+    // Position Spotlight
+    spotlight.style.top = (rect.top - padding) + 'px';
+    spotlight.style.left = (rect.left - padding) + 'px';
+    spotlight.style.width = (rect.width + (padding * 2)) + 'px';
+    spotlight.style.height = (rect.height + (padding * 2)) + 'px';
+
+    // Update Content
+    document.getElementById('tourTitle').textContent = step.title;
+    document.getElementById('tourText').textContent = step.content;
+    nextBtn.textContent = index === tourSteps.length - 1 ? 'Finish' : 'Next';
+
+    // Position Tooltip
+    tooltip.classList.remove('visible');
+    
+    setTimeout(() => {
+        const tooltipRect = tooltip.getBoundingClientRect();
+        let top = rect.bottom + 20;
+        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+
+        // Adjust if tooltip goes off screen
+        if (top + tooltipRect.height > window.innerHeight) {
+            top = rect.top - tooltipRect.height - 20;
+        }
+        if (left < 10) left = 10;
+        if (left + tooltipRect.width > window.innerWidth - 10) {
+            left = window.innerWidth - tooltipRect.width - 10;
+        }
+
+        tooltip.style.top = top + 'px';
+        tooltip.style.left = left + 'px';
+        tooltip.classList.add('visible');
+    }, 100);
+}
+
+function endTour() {
+    const overlay = document.querySelector('.tour-overlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.display = 'none', 300);
+    }
+    localStorage.setItem('pickpose_tour_complete', 'true');
+    logEvent(analytics, 'feature_tour_complete', { step: currentTourStep });
+}
 
 function filterCards() {
     const grid = document.getElementById('posesGrid');
@@ -678,9 +914,14 @@ function setupAuth() {
         
         // Onboarding Check
         const onboardingOverlay = document.getElementById('onboardingOverlay');
-        if (user) {
+        const onboardingSeen = localStorage.getItem('pickpose_onboarding_seen');
+        
+        if (user || onboardingSeen === 'true') {
             onboardingOverlay?.classList.add('hidden');
-            document.body.style.overflow = '';
+            if (onboardingOverlay && !user) {
+                 // If visitor has seen it but is logged out, ensure scroll is enabled
+                 document.body.style.overflow = '';
+            }
         } else {
             onboardingOverlay?.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
@@ -800,6 +1041,17 @@ function setupAuth() {
         btnDrawerLogout.addEventListener('click', async () => {
             profileDrawer.classList.add('hidden');
             document.body.style.overflow = '';
+            
+            // CLEAR ONBOARDING STATE
+            localStorage.removeItem('pickpose_onboarding_seen');
+            if (typeof currentOnboardingSlide !== 'undefined') {
+                if (typeof resetOnboardingCarousel === 'function') {
+                    resetOnboardingCarousel();
+                } else {
+                    currentOnboardingSlide = 0;
+                }
+            }
+
             try {
                 await signOut(auth);
             } catch (err) {
@@ -852,6 +1104,7 @@ function setupAuth() {
     getRedirectResult(auth)
         .then(async (result) => {
             if (result && result.user) {
+                console.log("Redirect Auth Success:", result.user.email);
                 const user = result.user;
                 // Create profile if new
                 const userRef = doc(db, "users", user.uid);
@@ -863,13 +1116,22 @@ function setupAuth() {
                         createdAt: new Date()
                     });
                 }
+                // Ensure everything is closed and scrolled
                 closeMod();
+                const onboardingOverlay = document.getElementById('onboardingOverlay');
+                onboardingOverlay?.classList.add('hidden');
+                document.body.style.overflow = '';
             }
         })
         .catch((error) => {
-            console.error("Redirect Auth Error:", error);
-            if (error.code !== 'auth/web-storage-unsupported') {
-                showError("Login failed: " + error.message);
+            console.error("Redirect Auth Error Detail:", error.code, error.message);
+            // Only show error if it's a real failure, not just a cancelled state
+            if (error.code === 'auth/web-storage-unsupported') {
+                showError("Mobile Auth Error: Your browser blocks third-party cookies/storage. Please disable 'Block All Cookies' or 'Secret Mode'.");
+            } else if (error.code === 'auth/unauthorized-domain') {
+                showError("Domain Not Authorized: Please add '" + window.location.hostname + "' to Firebase Authorized Domains.");
+            } else if (error.code !== 'auth/redirect-cancelled-by-user') {
+                showError("Redirect Login failed: " + error.message);
             }
         });
 
@@ -882,50 +1144,48 @@ function setupAuth() {
     // --- GOOGLE LOGIN ---
     document.getElementById('btnGoogleLogin').addEventListener('click', async () => {
         const provider = new GoogleAuthProvider();
-        // Request additional scopes if needed
         provider.addScope('profile');
         provider.addScope('email');
 
         showError("", true);
         const btn = document.getElementById('btnGoogleLogin');
         const originalHtml = btn.innerHTML;
+        
         btn.disabled = true;
         btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Connecting...`;
 
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
         try {
-            if (isMobile) {
-                // Redirect is more reliable on mobile to avoid popup blockers
-                await signInWithRedirect(auth, provider);
-            } else {
-                // Popup is better for desktop UX
-                const result = await signInWithPopup(auth, provider);
-                const user = result.user;
-
-                // Check if user exists in Firestore, if not create a basic profile
-                const userRef = doc(db, "users", user.uid);
-                const snap = await getDoc(userRef);
-                if (!snap.exists()) {
-                    await setDoc(userRef, {
-                        username: user.email.split('@')[0],
-                        email: user.email,
-                        createdAt: new Date()
-                    });
+            if (isMobile || isStandalone) {
+                console.log("Attempting Mobile Redirect...");
+                try {
+                    await signInWithRedirect(auth, provider);
+                } catch (redirectError) {
+                    console.warn("Redirect failed, attempting Popup fallback...", redirectError);
+                    // Fallback to popup if redirect is blocked (e.g. some Safari settings)
+                    const result = await signInWithPopup(auth, provider);
+                    handleGoogleAuthSuccess(result.user);
                 }
-                closeMod();
+            } else {
+                console.log("Attempting Desktop Popup...");
+                const result = await signInWithPopup(auth, provider);
+                handleGoogleAuthSuccess(result.user);
             }
         } catch (error) {
-            console.error("Google Auth Error:", error);
+            console.error("Google Auth Error Detail:", error.code, error.message);
             let userMsg = error.message;
             
             if (error.code === 'auth/popup-blocked') {
-                userMsg = "Pop-up blocked! Please allow pop-ups for this site or try on a different browser.";
+                userMsg = "Pop-up blocked! Please allow pop-ups for this site or try a different browser.";
+            } else if (error.code === 'auth/web-storage-unsupported') {
+                userMsg = "Storage not supported. Please disable 'Private/Incognito' mode or enable cookies.";
             } else if (error.code === 'auth/operation-not-allowed') {
-                userMsg = "Google login is not enabled in Firebase. Please contact the administrator.";
+                userMsg = "Google login is currently disabled in Firebase Console.";
             } else if (error.code === 'auth/unauthorized-domain') {
-                userMsg = "This domain is not authorized in Firebase. Please add '" + window.location.hostname + "' to authorized domains.";
-            } else if (error.code === 'auth/cancelled-popup-request') {
+                userMsg = "Domain Not Authorized: Add '" + window.location.hostname + "' to Firebase Authorized Domains.";
+            } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
                 userMsg = "Login cancelled.";
             }
 
@@ -935,6 +1195,18 @@ function setupAuth() {
         }
     });
 
+    async function handleGoogleAuthSuccess(user) {
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+            await setDoc(userRef, {
+                username: user.email.split('@')[0],
+                email: user.email,
+                createdAt: new Date()
+            });
+        }
+        closeMod();
+    }
     // --- LOGIN FLOW ---
     document.getElementById('btnLoginSubmit').addEventListener('click', async () => {
         const identifier = document.getElementById('loginIdentifier').value.trim();
@@ -1475,12 +1747,38 @@ document.addEventListener('DOMContentLoaded', () => {
     initPickpose();
     setupModal();
 
-    // --- REGISTER SERVICE WORKER ---
+    // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('Service Worker: Registered'))
-                .catch(err => console.log(`Service Worker: Error: ${err}`));
+            navigator.serviceWorker.register('./sw.js').then(reg => {
+                console.log('Service Worker registered:', reg.scope);
+
+                // Check for updates periodically
+                reg.update();
+
+                // Listen for any new service worker waiting to take over
+                reg.onupdatefound = () => {
+                    const newWorker = reg.installing;
+                    newWorker.onstatechange = () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New version is ready!
+                            console.log('New update available. Refreshing...');
+                            // Show a small toast if you want, or just reload
+                            window.location.reload();
+                        }
+                    };
+                };
+            }).catch(err => {
+                console.log('Service Worker registration failed:', err);
+            });
+        });
+
+        // Ensure we only reload once
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
         });
     }
 
@@ -1543,8 +1841,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    window.addEventListener('appinstalled', (evt) => {
+    window.addEventListener('appinstalled', async (evt) => {
         console.log('PickPose was installed.');
+        logEvent(analytics, 'app_installed');
+        try {
+            const statsRef = doc(db, "stats", "global");
+            await updateDoc(statsRef, { installs: increment(1) });
+        } catch (e) {}
         const installBtn = document.getElementById('btnDrawerInstall');
         if (installBtn) {
             installBtn.classList.add('hidden');
@@ -1571,6 +1874,7 @@ function initOnboarding() {
             updateOnboardingUI();
         } else {
             // Final slide: Open Auth Modal
+            localStorage.setItem('pickpose_onboarding_seen', 'true');
             window.openAuthModal('authModeSelection');
         }
     });
@@ -1596,6 +1900,12 @@ function initOnboarding() {
             btnNext.textContent = 'Next';
         }
     }
+    
+    // EXPOSE UI UPDATE SO LOGOUT CAN RESET IT
+    window.resetOnboardingCarousel = () => {
+        currentOnboardingSlide = 0;
+        updateOnboardingUI();
+    };
 
     // Handle window resize to keep scroll aligned
     window.addEventListener('resize', () => {

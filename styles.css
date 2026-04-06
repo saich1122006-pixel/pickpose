@@ -892,6 +892,32 @@ body {
     font-family: var(--font);
 }
 
+#authWizardErrorMsg {
+    transition: all 0.3s ease;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 20px;
+    font-size: 13px;
+    line-height: 1.4;
+    border: 1px solid transparent;
+}
+
+#authWizardErrorMsg:not(.hidden) {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    display: block !important;
+}
+
+.auth-step.hidden {
+    display: none !important;
+}
+
+.btn-outline:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    border-color: var(--border);
+}
+
 .btn-primary {
     background: var(--primary);
     color: var(--primary-text);
@@ -904,6 +930,11 @@ body {
     cursor: pointer;
     font-family: var(--font);
     transition: opacity 0.2s;
+}
+
+.btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
 }
 
 .btn-primary:hover {
