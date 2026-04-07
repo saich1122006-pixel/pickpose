@@ -130,20 +130,20 @@ async function initPickpose() {
         try {
             const broadcastRef = doc(db, "app_metadata", "broadcast");
             const snap = await getDoc(broadcastRef);
-            
+
             if (snap.exists()) {
                 const data = snap.data();
                 const lastSeenVersion = localStorage.getItem('pickpose_last_version');
-                
+
                 if (data.version && data.version !== lastSeenVersion) {
                     const modal = document.getElementById('whatsNewModal');
                     const content = document.getElementById('whatsNewContent');
                     const btn = document.getElementById('closeWhatsNew');
-                    
+
                     if (modal && content && btn) {
                         content.innerHTML = data.message.replace(/\n/g, '<br>');
                         modal.classList.remove('hidden');
-                        
+
                         btn.addEventListener('click', () => {
                             modal.classList.add('hidden');
                             localStorage.setItem('pickpose_last_version', data.version);
@@ -160,7 +160,7 @@ async function initPickpose() {
     // Initial load check
     document.addEventListener('DOMContentLoaded', async () => {
         checkForUpdates();
-        
+
         // Load Category Priority for better UX
         try {
             const catRef = doc(db, "app_metadata", "categories");
@@ -324,10 +324,10 @@ async function initPickpose() {
         if (contactForm) {
             contactForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                
+
                 const btnSubmit = document.getElementById('btnSubmitContact');
                 const btnText = btnSubmit.querySelector('.btn-text');
-                
+
                 if (btnSubmit) {
                     btnSubmit.disabled = true;
                     if (btnText) btnText.textContent = 'Sending...';
@@ -343,7 +343,7 @@ async function initPickpose() {
                     };
 
                     await addDoc(collection(db, "contact_messages"), msgData);
-                    
+
                     if (btnSubmit) btnSubmit.classList.add('hidden');
                     if (contactSuccessMsg) contactSuccessMsg.classList.remove('hidden');
                     triggerHaptic(20);
@@ -376,7 +376,7 @@ async function initPickpose() {
         const userPoseDropZone = document.getElementById('userPoseDropZone');
         const userPoseFileInput = document.getElementById('userPoseFileInput');
         const userPosePreviewGrid = document.getElementById('userPosePreviewGrid');
-        
+
         let userUploadedImageData = null; // Store compressed base64
 
         if (btnSubmitPose && submitPoseModal) {
@@ -441,14 +441,14 @@ async function initPickpose() {
 
         // File Selection Logic
         userPoseDropZone?.addEventListener('click', () => userPoseFileInput.click());
-        
+
         userPoseDropZone?.addEventListener('dragover', (e) => {
             e.preventDefault();
             userPoseDropZone.classList.add('dragover');
         });
-        
+
         userPoseDropZone?.addEventListener('dragleave', () => userPoseDropZone.classList.remove('dragover'));
-        
+
         userPoseDropZone?.addEventListener('drop', (e) => {
             e.preventDefault();
             userPoseDropZone.classList.remove('dragover');
@@ -462,9 +462,9 @@ async function initPickpose() {
         async function handleUserFiles(files) {
             const file = files[0]; // Limit to one for users
             if (!file.type.startsWith('image/')) return alert("Please select an image file.");
-            
+
             userPoseDropZone.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary); margin-bottom: 15px; display: block;"></i><p>Optimizing Photo...</p>';
-            
+
             try {
                 userUploadedImageData = await compressImageForUser(file);
                 renderUserPreview(userUploadedImageData);
@@ -514,7 +514,7 @@ async function initPickpose() {
                         category: document.getElementById('submitPoseCategory').value,
                         gender: document.getElementById('submitPoseGender').value,
                         tags: document.getElementById('submitPoseTags').value.split(',').map(t => t.trim()).filter(t => t),
-                        title: "", 
+                        title: "",
                         status: "pending",
                         userEmail: auth.currentUser.email,
                         uid: auth.currentUser.uid,
@@ -522,10 +522,10 @@ async function initPickpose() {
                     };
 
                     await addDoc(collection(db, "pending_poses"), submission);
-                    
+
                     if (submitPoseSuccessMsg) submitPoseSuccessMsg.classList.remove('hidden');
                     triggerHaptic(50);
-                    
+
                     setTimeout(() => {
                         closeSubmitModal();
                         if (btn) btn.disabled = false;
@@ -610,7 +610,7 @@ function buildFilterButtons(poses, container, searchInput) {
     if (btnSavedPoses) {
         btnSavedPoses.addEventListener('click', () => {
             const isClosing = btnSavedPoses.classList.contains('active');
-            
+
             // Clear category filters
             container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
 
@@ -672,7 +672,7 @@ const tourSteps = [
 
 function startFeatureTour() {
     currentTourStep = 0;
-    
+
     // Create UI if not exists
     let overlay = document.querySelector('.tour-overlay');
     if (!overlay) {
@@ -690,7 +690,7 @@ function startFeatureTour() {
             </div>
         `;
         document.body.appendChild(overlay);
-        
+
         document.getElementById('btnTourSkip').addEventListener('click', endTour);
         document.getElementById('btnTourNext').addEventListener('click', () => {
             currentTourStep++;
@@ -701,7 +701,7 @@ function startFeatureTour() {
             }
         });
     }
-    
+
     overlay.style.display = 'block';
     overlay.style.opacity = '1';
     showTourStep(0);
@@ -724,7 +724,7 @@ function showTourStep(index) {
 
     const rect = target.getBoundingClientRect();
     const padding = 10;
-    
+
     // Scroll element into view if needed
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
@@ -752,7 +752,7 @@ function showTourStep(index) {
 
         // Position Tooltip
         tooltip.classList.remove('visible');
-        
+
         setTimeout(() => {
             const tooltipRect = tooltip.getBoundingClientRect();
             let top = finalRect.bottom + 25;
@@ -780,7 +780,7 @@ function endTour() {
         overlay.style.opacity = '0';
         setTimeout(() => overlay.style.display = 'none', 300);
     }
-    
+
     // Final cleanup of target styling
     document.querySelectorAll('.tour-target-active').forEach(el => {
         el.classList.remove('tour-target-active');
@@ -817,7 +817,7 @@ function filterCards() {
         const cat = (pose.category || '').toLowerCase();
         const title = (pose.title || '').toLowerCase();
         const fullTxt = `${title} ${cat} ${tags}`;
-        
+
         let matchSearch = true;
         if (searchQuery) {
             const keywords = searchQuery.split(' ').filter(k => k.length > 0);
@@ -833,19 +833,14 @@ function filterCards() {
         return matchCategory && matchGender && matchSearch && matchDifficulty;
     });
 
-    // 2. Pagination / Paywall limit
-    const MAX_LIMIT = 16;
+    // 2. Pagination / Paywall limit removed
     const isAuth = isLoggedIn();
     const totalCount = filtered.length;
-
-    if (!isAuth && totalCount > MAX_LIMIT) {
-        filtered = filtered.slice(0, MAX_LIMIT);
-    }
 
     // 3. Render
     grid.innerHTML = '';
     currentFilteredPoses = filtered; // Update our global list for modal navigation
-    
+
     filtered.forEach(pose => {
         const card = document.createElement('div');
         card.className = 'pose-card';
@@ -861,17 +856,7 @@ function filterCards() {
         grid.appendChild(card);
     });
 
-    // 4. Append Paywall if needed
-    if (!isAuth && totalCount > MAX_LIMIT) {
-        const paywall = document.createElement('div');
-        paywall.className = 'paywall-banner';
-        paywall.innerHTML = `
-            <h4>Want to see more?</h4>
-            <p>Sign up to unlock all poses in this category!</p>
-            <button onclick="window.openAuthModal('authSignupStep1')">Sign Up Now</button>
-        `;
-        grid.appendChild(paywall);
-    }
+    // 4. Paywall removed
 }
 
 function renderGrid(data, gridElement) {
@@ -929,20 +914,16 @@ function setupAuth() {
         }
         isAuthInitialized = true;
         updateHeaderAuthUI();
-        
-        // Onboarding Check
+
         const onboardingOverlay = document.getElementById('onboardingOverlay');
-        const onboardingSeen = localStorage.getItem('pickpose_onboarding_seen');
         
-        if (user || onboardingSeen === 'true') {
+        if (user) {
             onboardingOverlay?.classList.add('hidden');
-            if (onboardingOverlay && !user) {
-                 // If visitor has seen it but is logged out, ensure scroll is enabled
-                 document.body.style.overflow = '';
-            }
+            document.body.style.overflow = '';
         } else {
             onboardingOverlay?.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
+            if (typeof resetOnboardingCarousel === 'function') resetOnboardingCarousel();
         }
 
         filterCards(); // Refresh grid with auth state resolved
@@ -984,7 +965,7 @@ function setupAuth() {
             e.stopPropagation();
             openProfileDrawer();
         });
-        
+
         if (closeProfileDrawer) {
             closeProfileDrawer.addEventListener('click', () => {
                 profileDrawer.classList.add('hidden');
@@ -995,8 +976,8 @@ function setupAuth() {
         // Close drawer if clicking elsewhere
         document.addEventListener('click', (e) => {
             const drawerContent = profileDrawer.querySelector('.drawer-content');
-            if (!profileDrawer.classList.contains('hidden') && 
-                drawerContent && !drawerContent.contains(e.target) && 
+            if (!profileDrawer.classList.contains('hidden') &&
+                drawerContent && !drawerContent.contains(e.target) &&
                 !userIcon.contains(e.target)) {
                 profileDrawer.classList.add('hidden');
                 document.body.style.overflow = '';
@@ -1059,7 +1040,7 @@ function setupAuth() {
         btnDrawerLogout.addEventListener('click', async () => {
             profileDrawer.classList.add('hidden');
             document.body.style.overflow = '';
-            
+
             // CLEAR ONBOARDING STATE
             localStorage.removeItem('pickpose_onboarding_seen');
             if (typeof currentOnboardingSlide !== 'undefined') {
@@ -1168,7 +1149,7 @@ function setupAuth() {
         showError("", true);
         const btn = document.getElementById('btnGoogleLogin');
         const originalHtml = btn.innerHTML;
-        
+
         btn.disabled = true;
         btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Connecting...`;
 
@@ -1194,7 +1175,7 @@ function setupAuth() {
         } catch (error) {
             console.error("Google Auth Error Detail:", error.code, error.message);
             let userMsg = error.message;
-            
+
             if (error.code === 'auth/popup-blocked') {
                 userMsg = "Pop-up blocked! Please allow pop-ups for this site or try a different browser.";
             } else if (error.code === 'auth/web-storage-unsupported') {
@@ -1397,23 +1378,17 @@ function setupAuth() {
 }
 
 function updateHeaderAuthUI() {
-    const btnLogin = document.getElementById('btnNavLogin');
-    const btnSignup = document.getElementById('btnNavSignup');
     const userIcon = document.getElementById('userProfileIcon');
     const btnAbout = document.getElementById('btnAbout');
     const btnContact = document.getElementById('btnContact');
     const btnSubmitPose = document.getElementById('btnSubmitPose');
     const btnSubmitPoseMobile = document.getElementById('btnSubmitPoseMobile');
 
-    if (!btnLogin) return;
-
     if (isLoggedIn()) {
-        btnLogin.classList.add('hidden');
-        btnSignup.classList.add('hidden');
         if (userIcon) userIcon.classList.remove('hidden');
         if (btnSubmitPose) btnSubmitPose.classList.remove('hidden');
         if (btnSubmitPoseMobile) btnSubmitPoseMobile.classList.remove('hidden');
-        
+
         // Hide About/Contact from navbar when logged in (Consolidated to profile menu)
         if (btnAbout) btnAbout.classList.add('hidden');
         if (btnContact) btnContact.classList.add('hidden');
@@ -1422,7 +1397,7 @@ function updateHeaderAuthUI() {
         const user = auth.currentUser;
         const profileEmail = document.getElementById('profileEmail');
         const profileUsername = document.getElementById('profileUsername');
-        
+
         if (profileEmail) profileEmail.textContent = user.email;
         if (profileUsername) {
             // Try to get username from Firestore
@@ -1435,7 +1410,7 @@ function updateHeaderAuthUI() {
                 }
             });
         }
-        
+
         // Admin Shortcut for saich@pickpose.app
         const btnAdmin = document.getElementById('btnAdminDashboard');
         if (btnAdmin) {
@@ -1447,12 +1422,10 @@ function updateHeaderAuthUI() {
             }
         }
     } else {
-        btnLogin.classList.remove('hidden');
-        btnSignup.classList.remove('hidden');
         if (userIcon) userIcon.classList.add('hidden');
         if (btnSubmitPose) btnSubmitPose.classList.add('hidden');
         if (btnSubmitPoseMobile) btnSubmitPoseMobile.classList.add('hidden');
-        
+
         // Show About/Contact for guests
         if (btnAbout) btnAbout.classList.remove('hidden');
         if (btnContact) btnContact.classList.remove('hidden');
@@ -1474,7 +1447,7 @@ async function openProfileDetails() {
 
     document.getElementById('detailUid').textContent = user.uid;
     document.getElementById('detailEmail').textContent = user.email;
-    
+
     // Member since
     try {
         const userRef = doc(db, "users", user.uid);
@@ -1485,7 +1458,7 @@ async function openProfileDetails() {
         } else {
             document.getElementById('detailJoined').textContent = "Unknown";
         }
-    } catch(e) {
+    } catch (e) {
         document.getElementById('detailJoined').textContent = "Error loading";
     }
 
@@ -1617,7 +1590,7 @@ function setupModal() {
     }
 
     // --- ZOOM & PAN ENGINE ---
-    
+
     // Double Tap / Click to toggle zoom
     modalImg.addEventListener('dblclick', (e) => {
         if (zoomState.scale > 1) {
@@ -1658,7 +1631,7 @@ function setupModal() {
             panStartX = e.touches[0].pageX - zoomState.x;
             panStartY = e.touches[0].pageY - zoomState.y;
         }
-        
+
         // For swipe navigation
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
@@ -1758,16 +1731,16 @@ function openModal(pose) {
     const modalTags = document.getElementById('modalTags');
     const btnFavorite = document.getElementById('btnFavorite');
 
-    activePoseContext = pose; 
+    activePoseContext = pose;
     modalImg.src = pose.images[0];
-    
+
     // Reset zoom state on open
     zoomState = { scale: 1, x: 0, y: 0 };
     modalImg.style.transform = `translate(0,0) scale(1)`;
-    
+
     const diff = pose.difficulty || 'beginner';
     modalTitle.innerHTML = `<span>${pose.title || ''}</span> <span class="difficulty-btn ${diff}" style="font-size:10px; padding:3px 8px; margin-left:8px; border-radius:10px;">${diff}</span>`;
-    
+
     document.body.style.overflow = 'hidden';
 
     // Toggle Heart Icon UI
@@ -1852,7 +1825,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         // Stash the event so it can be triggered later.
         deferredPrompt = e;
-        
+
         // --- 1. Manage Drawer Install Button ---
         const installBtn = document.getElementById('btnDrawerInstall');
         if (installBtn) {
@@ -1911,7 +1884,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const statsRef = doc(db, "stats", "global");
             await updateDoc(statsRef, { installs: increment(1) });
-        } catch (e) {}
+        } catch (e) { }
         const installBtn = document.getElementById('btnDrawerInstall');
         if (installBtn) {
             installBtn.classList.add('hidden');
@@ -1964,7 +1937,7 @@ function initOnboarding() {
             btnNext.textContent = 'Next';
         }
     }
-    
+
     // EXPOSE UI UPDATE SO LOGOUT CAN RESET IT
     window.resetOnboardingCarousel = () => {
         currentOnboardingSlide = 0;
@@ -2030,7 +2003,7 @@ function getSmartCropRectForUser(imgW, imgH, faces) {
     }
     cropX = Math.round((imgW - cropW) / 2);
     cropY = Math.round((imgH - cropH) / 2);
-    
+
     // Bias toward top third for poses if tall
     if (imgAspect <= TARGET_ASPECT) {
         cropY = Math.round((imgH - cropH) * 0.3);

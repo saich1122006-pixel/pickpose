@@ -29,7 +29,7 @@
 
 <body>
     <!-- Onboarding Flow (Full Screen) -->
-    <div id="onboardingOverlay" class="hidden">
+    <div id="onboardingOverlay">
         <div class="onboarding-carousel" id="onboardingCarousel">
             <!-- Slide 1 -->
             <div class="onboarding-slide">
@@ -145,14 +145,16 @@
         </div>
         <div class="nav-center">
             <!-- HIDDEN DECOYS to capture browser autofill -->
-            <div style="position: absolute; left: -9999px; top: -9999px; height: 1px; width: 1px; overflow: hidden; opacity: 0; pointer-events: none;">
+            <div
+                style="position: absolute; left: -9999px; top: -9999px; height: 1px; width: 1px; overflow: hidden; opacity: 0; pointer-events: none;">
                 <input type="text" name="pickpose_email_hook" tabindex="-1">
                 <input type="password" name="pickpose_pass_hook" tabindex="-1">
             </div>
-            
+
             <div class="top-search-bar">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="search" id="searchInput" placeholder="Search photos..." autocomplete="off" name="pp_search_query" spellcheck="false">
+                <input type="search" id="searchInput" placeholder="Search photos..." autocomplete="off"
+                    name="pp_search_query" spellcheck="false">
             </div>
         </div>
 
@@ -170,11 +172,6 @@
             </button>
             <i class="fa-solid fa-circle-user hidden" id="userProfileIcon"
                 style="font-size: 1.25rem; color: #a1a1aa; cursor: pointer;" title="Your Account"></i>
-            <button class="nav-link" id="btnNavLogin"
-                style="background: none; border: none; font-size: 14px; font-weight: 500; cursor: pointer;">Log
-                In</button>
-            <button class="btn-signup" id="btnNavSignup" style="border: none; cursor: pointer; padding: 8px 16px;">Sign
-                Up</button>
             <button class="nav-link hidden" id="btnNavLogout"
                 style="background: none; border: none; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-muted);">Log
                 Out</button>
@@ -551,46 +548,71 @@
     <!-- WHAT'S NEW MODAL -->
     <div id="whatsNewModal" class="modal hidden" style="z-index: 10002;">
         <div class="modal-bg" style="background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);"></div>
-        <div class="auth-card animate-scale" style="max-width: 400px; padding: 32px; text-align: center; border: 1px solid rgba(200, 160, 60, 0.3);">
+        <div class="auth-card animate-scale"
+            style="max-width: 400px; padding: 32px; text-align: center; border: 1px solid rgba(200, 160, 60, 0.3);">
             <div class="modal-icon" style="font-size: 48px; color: var(--gold-accent); margin-bottom: 24px;">
                 <i class="fa-solid fa-wand-magic-sparkles"></i>
             </div>
-            <h2 id="whatsNewTitle" style="font-size: 26px; margin-bottom: 16px; font-weight: 700; background: linear-gradient(135deg, #fff 0%, #c8a03c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">What's New!</h2>
-            <div id="whatsNewContent" class="whats-new-body" style="font-size: 16px; color: var(--text-muted); line-height: 1.7; margin-bottom: 32px; text-align: left; padding: 0 10px;">
+            <h2 id="whatsNewTitle"
+                style="font-size: 26px; margin-bottom: 16px; font-weight: 700; background: linear-gradient(135deg, #fff 0%, #c8a03c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                What's New!</h2>
+            <div id="whatsNewContent" class="whats-new-body"
+                style="font-size: 16px; color: var(--text-muted); line-height: 1.7; margin-bottom: 32px; text-align: left; padding: 0 10px;">
                 <!-- Content will be injected -->
             </div>
-            <button id="closeWhatsNew" class="btn-primary" style="width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; font-size: 16px;">
+            <button id="closeWhatsNew" class="btn-primary"
+                style="width: 100%; padding: 16px; border-radius: 12px; font-weight: 700; font-size: 16px;">
                 Awesome, got it!
             </button>
         </div>
     </div>
     <style>
-        .animate-scale { animation: modalScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        @keyframes modalScale {
-            from { transform: scale(0.85); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+        .animate-scale {
+            animation: modalScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-        .whats-new-body b { color: #fff; font-weight: 600; }
+
+        @keyframes modalScale {
+            from {
+                transform: scale(0.85);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .whats-new-body b {
+            color: #fff;
+            font-weight: 600;
+        }
 
         /* TOUR STYLES */
         .tour-overlay {
             position: fixed;
             inset: 0;
             z-index: 10005;
-            background: transparent; /* Changed from rgba(0,0,0,0.8) to allow spotlight to shine through */
+            background: transparent;
+            /* Changed from rgba(0,0,0,0.8) to allow spotlight to shine through */
             pointer-events: none;
             transition: opacity 0.3s;
         }
+
         .tour-spotlight {
             position: absolute;
-            background: transparent; /* Ensure the icon shines through */
-            box-shadow: 0 0 0 9999px rgba(0,0,0,0.85); /* Darken everything else */
-            border: 2px solid var(--gold-accent); /* Golden ring around the icon */
+            background: transparent;
+            /* Ensure the icon shines through */
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.85);
+            /* Darken everything else */
+            border: 2px solid var(--gold-accent);
+            /* Golden ring around the icon */
             border-radius: 12px;
             pointer-events: auto;
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             z-index: 10006;
         }
+
         .tour-tooltip {
             position: absolute;
             width: 280px;
@@ -598,22 +620,58 @@
             border: 1px solid rgba(200, 160, 60, 0.3);
             border-radius: 16px;
             padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             z-index: 10007;
             pointer-events: auto;
             opacity: 0;
             transform: translateY(10px);
             transition: all 0.3s ease;
         }
+
         .tour-tooltip.visible {
             opacity: 1;
             transform: translateY(0);
         }
-        .tour-tooltip h4 { color: var(--gold-accent); margin-bottom: 8px; font-size: 16px; font-weight: 700; }
-        .tour-tooltip p { color: var(--text-muted); font-size: 14px; line-height: 1.5; margin-bottom: 16px; }
-        .tour-controls { display: flex; justify-content: space-between; align-items: center; }
-        .btn-tour-next { background: var(--gold-accent); color: #000; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; }
-        .btn-tour-skip { background: none; border: none; color: var(--text-muted); font-size: 12px; cursor: pointer; text-decoration: underline; }
+
+        .tour-tooltip h4 {
+            color: var(--gold-accent);
+            margin-bottom: 8px;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .tour-tooltip p {
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .tour-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-tour-next {
+            background: var(--gold-accent);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .btn-tour-skip {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
     </style>
 
     <script type="module" src="script.js"></script>
@@ -779,7 +837,8 @@
                 <img src="images/pickpose-logo.png" alt="Pickpose">
             </div>
             <div class="pwa-text">
-                <h3 style="font-family: 'Syne', sans-serif; font-weight: 800; letter-spacing: -0.5px;">Install pickpose App</h3>
+                <h3 style="font-family: 'Syne', sans-serif; font-weight: 800; letter-spacing: -0.5px;">Install pickpose
+                    App</h3>
                 <p>Add to your home screen for a faster, full-screen experience.</p>
             </div>
             <div class="pwa-actions">
