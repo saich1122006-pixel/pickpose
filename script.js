@@ -1,6 +1,6 @@
 import { db, auth, analytics, logEvent } from './firebase-config.js';
 import { collection, getDocs, getDoc, setDoc, doc, addDoc, query, where, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // No default poses — all content managed via admin panel
 const defaultPosesData = [];
@@ -1118,7 +1118,40 @@ function setupAuth() {
         errEl.classList.remove('hidden');
     };
 
-    // Auth Wizard Logic
+    // --- HANDLE REDIRECT RESULT (FOR MOBILE) ---
+    getRedirectResult(auth)
+        .then(async (result) => {
+            if (result && result.user) {
+                console.log("Redirect Auth Success:", result.user.email);
+                const user = result.user;
+                // Create profile if new
+                const userRef = doc(db, "users", user.uid);
+                const snap = await getDoc(userRef);
+                if (!snap.exists()) {
+                    await setDoc(userRef, {
+                        username: user.email.split('@')[0],
+                        email: user.email,
+                        createdAt: new Date()
+                    });
+                }
+                // Ensure everything is closed and scrolled
+                closeMod();
+                const onboardingOverlay = document.getElementById('onboardingOverlay');
+                onboardingOverlay?.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        })
+        .catch((error) => {
+            console.error("Redirect Auth Error Detail:", error.code, error.message);
+            // Only show error if it's a real failure, not just a cancelled state
+            if (error.code === 'auth/web-storage-unsupported') {
+                showError("Mobile Auth Error: Your browser blocks third-party cookies/storage. Please disable 'Block All Cookies' or 'Secret Mode'.");
+            } else if (error.code === 'auth/unauthorized-domain') {
+                showError("Domain Not Authorized: Please add '" + window.location.hostname + "' to Firebase Authorized Domains.");
+            } else if (error.code !== 'auth/redirect-cancelled-by-user') {
+                showError("Redirect Login failed: " + error.message);
+            }
+        });
 
     // Mode Selection
     document.getElementById('btnGoToLogin').addEventListener('click', () => showStep('authStepLogin'));
@@ -1126,6 +1159,72 @@ function setupAuth() {
     document.getElementById('btnBackToMenuLogin')?.addEventListener('click', () => showStep('authModeSelection'));
     document.getElementById('btnBackToMenuSignup')?.addEventListener('click', () => showStep('authModeSelection'));
 
+    // --- GOOGLE LOGIN ---
+    document.getElementById('btnGoogleLogin').addEventListener('click', async () => {
+        const provider = new GoogleAuthProvider();
+        provider.addScope('profile');
+        provider.addScope('email');
+
+        showError("", true);
+        const btn = document.getElementById('btnGoogleLogin');
+        const originalHtml = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Connecting...`;
+
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+        try {
+            if (isMobile || isStandalone) {
+                console.log("Attempting Mobile Redirect...");
+                try {
+                    await signInWithRedirect(auth, provider);
+                } catch (redirectError) {
+                    console.warn("Redirect failed, attempting Popup fallback...", redirectError);
+                    // Fallback to popup if redirect is blocked (e.g. some Safari settings)
+                    const result = await signInWithPopup(auth, provider);
+                    handleGoogleAuthSuccess(result.user);
+                }
+            } else {
+                console.log("Attempting Desktop Popup...");
+                const result = await signInWithPopup(auth, provider);
+                handleGoogleAuthSuccess(result.user);
+            }
+        } catch (error) {
+            console.error("Google Auth Error Detail:", error.code, error.message);
+            let userMsg = error.message;
+            
+            if (error.code === 'auth/popup-blocked') {
+                userMsg = "Pop-up blocked! Please allow pop-ups for this site or try a different browser.";
+            } else if (error.code === 'auth/web-storage-unsupported') {
+                userMsg = "Storage not supported. Please disable 'Private/Incognito' mode or enable cookies.";
+            } else if (error.code === 'auth/operation-not-allowed') {
+                userMsg = "Google login is currently disabled in Firebase Console.";
+            } else if (error.code === 'auth/unauthorized-domain') {
+                userMsg = "Domain Not Authorized: Add '" + window.location.hostname + "' to Firebase Authorized Domains.";
+            } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
+                userMsg = "Login cancelled.";
+            }
+
+            showError("Google Sign-In failed: " + userMsg);
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    });
+
+    async function handleGoogleAuthSuccess(user) {
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+            await setDoc(userRef, {
+                username: user.email.split('@')[0],
+                email: user.email,
+                createdAt: new Date()
+            });
+        }
+        closeMod();
+    }
     // --- LOGIN FLOW ---
     document.getElementById('btnLoginSubmit').addEventListener('click', async () => {
         const identifier = document.getElementById('loginIdentifier').value.trim();
