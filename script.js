@@ -1,6 +1,7 @@
 import { db, auth, analytics, logEvent } from './firebase-config.js';
 import { collection, getDocs, getDoc, setDoc, doc, addDoc, query, where, updateDoc, increment, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
 // No default poses — all content managed via admin panel
 const defaultPosesData = [];
 
@@ -14,16 +15,52 @@ let searchQuery = '';
 let favoritePoseIds = [];
 let activePoseContext = null;
 let activeDifficulty = 'all';
-let currentFilteredPoses = []; // To track current list for navigation
+let currentFilteredPoses = [];
 let touchStartX = 0;
 let touchStartY = 0;
 let touchEndX = 0;
 let touchEndY = 0;
 let currentOnboardingSlide = 0;
-let categoryPriority = []; // Loaded from Firestore
+let categoryPriority = [];
 
 // PWA Install Prompt Variable
 let deferredPrompt;
+
+// ============================================================
+// FIX: latestBroadcastData moved to MODULE SCOPE
+// so setupAuth() and initPickpose() can both access it
+// ============================================================
+let latestBroadcastData = null;
+
+// ============================================================
+// FIX: showWhatsNewModal moved to MODULE SCOPE
+// so setupAuth() can call it after redirect login success
+// ============================================================
+function showWhatsNewModal(message, version) {
+    const modal = document.getElementById('whatsNewModal');
+    const content = document.getElementById('whatsNewContent');
+    const btn = document.getElementById('closeWhatsNew');
+
+    if (modal && content && btn) {
+        content.innerHTML = message.replace(/\n/g, '<br>');
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+
+        btn.onclick = () => {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+            if (version) {
+                localStorage.setItem('pickpose_last_version', version);
+                logEvent(analytics, 'whats_new_dismissed', { version: version });
+
+                const badge = document.getElementById('notificationsBadge');
+                const bell = document.getElementById('notificationsBellIcon');
+                if (badge) badge.classList.add('hidden');
+                if (bell) bell.style.color = '#a1a1aa';
+            }
+        };
+    }
+}
 
 // Helper: Trigger subtle vibration on mobile devices
 function triggerHaptic(duration = 15) {
@@ -35,7 +72,7 @@ function triggerHaptic(duration = 15) {
 async function toggleFavorite(poseDocId) {
     if (!isLoggedIn()) {
         document.getElementById('authModal').classList.remove('hidden');
-        return false; // Force user to log in to save favorites
+        return false;
     }
 
     const uid = auth.currentUser.uid;
@@ -43,16 +80,16 @@ async function toggleFavorite(poseDocId) {
 
     if (idx > -1) {
         favoritePoseIds.splice(idx, 1);
-        triggerHaptic(10); // Light tap for removing
+        triggerHaptic(10);
     } else {
         favoritePoseIds.push(poseDocId);
-        triggerHaptic(20); // Stronger tap for adding
+        triggerHaptic(20);
     }
 
     try {
         const favRef = doc(db, "user_favorites", uid);
         await setDoc(favRef, { poses: favoritePoseIds });
-        filterCards(); // Update grid natively if filtering by Favorites
+        filterCards();
     } catch (err) {
         console.error("Failed to save favorite:", err);
     }
@@ -60,7 +97,6 @@ async function toggleFavorite(poseDocId) {
 }
 
 async function loadPosesData() {
-    // Show skeletons while loading
     const grid = document.getElementById('posesGrid');
     if (grid) {
         grid.innerHTML = '';
@@ -84,7 +120,6 @@ async function loadPosesData() {
             poses.push({ docId: doc.id, ...doc.data() });
         });
 
-        // Seed database if empty
         if (poses.length === 0) {
             console.log("Database empty. Seeding defaults...");
             for (const p of defaultPosesData) {
@@ -97,7 +132,6 @@ async function loadPosesData() {
         alert("Database connection failed. Please ensure Firebase Firestore is enabled in your project console! Error: " + error.message);
     }
 
-    // Shuffle the array to provide a varied experience (Requested by USER to avoid bulk uploads appearing together)
     for (let i = poses.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [poses[i], poses[j]] = [poses[j], poses[i]];
@@ -125,8 +159,6 @@ async function initPickpose() {
     }
 
     // --- BROADCAST / UPDATES (Real-time) ---
-    let latestBroadcastData = null;
-
     function setupBroadcastListener() {
         const broadcastRef = doc(db, "app_metadata", "broadcast");
         const notificationsBtn = document.getElementById('notificationsBtn');
@@ -137,7 +169,8 @@ async function initPickpose() {
             if (snap.exists()) {
                 const data = snap.data();
                 if (!data.version || !data.message) return;
-                
+
+                // FIX: latestBroadcastData is now module-scoped, visible everywhere
                 latestBroadcastData = data;
                 const lastSeenVersion = localStorage.getItem('pickpose_last_version');
 
@@ -146,17 +179,13 @@ async function initPickpose() {
                 }
 
                 if (data.version !== lastSeenVersion) {
-                    // New unseen update
                     if (notificationsBadge) notificationsBadge.classList.remove('hidden');
                     if (notificationsBellIcon) notificationsBellIcon.style.color = '#fff';
-                    
-                    // Show it automatically ONLY if user is already logged in
-                    // If not logged in, we wait for onAuthStateChanged to trigger it
+
                     if (auth.currentUser) {
                         showWhatsNewModal(data.message, data.version);
                     }
                 } else {
-                    // Already seen
                     if (notificationsBadge) notificationsBadge.classList.add('hidden');
                     if (notificationsBellIcon) notificationsBellIcon.style.color = '#a1a1aa';
                 }
@@ -178,45 +207,15 @@ async function initPickpose() {
         }
     }
 
-    // Call immediately since module scripts are deferred and DOM is ready
     setupBroadcastListener();
-
-    function showWhatsNewModal(message, version) {
-        const modal = document.getElementById('whatsNewModal');
-        const content = document.getElementById('whatsNewContent');
-        const btn = document.getElementById('closeWhatsNew');
-
-        if (modal && content && btn) {
-            content.innerHTML = message.replace(/\n/g, '<br>');
-            modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-
-            // Clean up previous event listeners by cloning if necessary, or just overwrite
-            btn.onclick = () => {
-                modal.classList.add('hidden');
-                document.body.style.overflow = '';
-                if (version) {
-                    localStorage.setItem('pickpose_last_version', version);
-                    logEvent(analytics, 'whats_new_dismissed', { version: version });
-                    
-                    const badge = document.getElementById('notificationsBadge');
-                    const bell = document.getElementById('notificationsBellIcon');
-                    if (badge) badge.classList.add('hidden');
-                    if (bell) bell.style.color = '#a1a1aa';
-                }
-            };
-        }
-    }
 
     // Initial load check
     document.addEventListener('DOMContentLoaded', async () => {
-        // Load Category Priority for better UX
         try {
             const catRef = doc(db, "app_metadata", "categories");
             const catSnap = await getDoc(catRef);
             if (catSnap.exists()) {
                 categoryPriority = catSnap.data().priorityOrder || [];
-                // Re-build buttons if data already loaded
                 if (posesData.length > 0) {
                     const filterContainer = document.getElementById('filterContainer');
                     const searchInput = document.getElementById('searchInput');
@@ -227,10 +226,8 @@ async function initPickpose() {
             console.error("Failed to load categories priority:", err);
         }
 
-        // Trigger Tour if first time
         const tourComplete = localStorage.getItem('pickpose_tour_complete');
         if (!tourComplete) {
-            // Wait for onboarding to potentially close (if active)
             setTimeout(() => {
                 if (document.getElementById('onboardingContainer').classList.contains('hidden')) {
                     startFeatureTour();
@@ -239,7 +236,6 @@ async function initPickpose() {
         }
     });
 
-    // Replay Tour from Profile
     document.getElementById('btnReplayTour')?.addEventListener('click', () => {
         const profileDrawer = document.getElementById('profileDrawer');
         if (profileDrawer) profileDrawer.classList.add('hidden');
@@ -249,16 +245,10 @@ async function initPickpose() {
     // Load data from Firebase
     posesData = await loadPosesData();
 
-    // Gender filter is now always visible via HTML persistent class
-
-
     if (grid) {
         renderGrid(posesData, grid);
-
-        // Build filter buttons dynamically from pose categories
         buildFilterButtons(posesData, filterContainer, searchInput);
 
-        // Filter Drawer Toggles (Listeners moved to buildFilterButtons for robustness)
         const btnCloseDrawer = document.getElementById('btnCloseDrawer');
         const filterDrawer = document.getElementById('filterDrawer');
         const btnApplyFilters = document.getElementById('btnApplyFilters');
@@ -279,14 +269,12 @@ async function initPickpose() {
 
         if (btnClearAllFilters) {
             btnClearAllFilters.addEventListener('click', () => {
-                // Reset Gender
                 const genderBtns = document.querySelectorAll('#genderFilterContainer .filter-btn');
                 genderBtns.forEach(b => b.classList.remove('active'));
                 const allGender = document.querySelector('#genderFilterContainer [data-gender="all"]');
                 if (allGender) allGender.classList.add('active');
                 activeGender = 'all';
 
-                // Reset Difficulty
                 const diffBtns = document.querySelectorAll('#difficultyFilterContainer .filter-btn');
                 diffBtns.forEach(b => b.classList.remove('active'));
                 const allDiff = document.querySelector('#difficultyFilterContainer [data-difficulty="all"]');
@@ -297,7 +285,6 @@ async function initPickpose() {
             });
         }
 
-        // Setup gender filter listener (Now in drawer)
         const genderBtns = document.querySelectorAll('#genderFilterContainer .filter-btn');
         genderBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -305,12 +292,10 @@ async function initPickpose() {
                 genderBtns.forEach(b => b.classList.remove('active'));
                 target.classList.add('active');
                 activeGender = target.dataset.gender;
-                // Live update or wait for apply? Let's do live.
                 filterCards();
             });
         });
 
-        // Setup difficulty filter listener (Now in drawer)
         const diffBtns = document.querySelectorAll('#difficultyFilterContainer .filter-btn');
         diffBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -322,15 +307,11 @@ async function initPickpose() {
             });
         });
 
-
-        // Saved Poses Listener moved to buildFilterButtons
-
         searchInput.addEventListener('input', (e) => {
             searchQuery = e.target.value.toLowerCase();
             filterCards();
         });
 
-        // About & Contact Overlay Logic
         const btnAbout = document.getElementById('btnAbout');
         const btnContact = document.getElementById('btnContact');
         const aboutOverlay = document.getElementById('aboutOverlay');
@@ -343,7 +324,7 @@ async function initPickpose() {
         if (btnAbout && aboutOverlay) {
             btnAbout.addEventListener('click', () => {
                 aboutOverlay.classList.remove('hidden');
-                document.body.style.overflow = 'hidden'; // Stop background scroll
+                document.body.style.overflow = 'hidden';
             });
         }
 
@@ -408,7 +389,7 @@ async function initPickpose() {
             });
         }
 
-        // --- SUBMIT POSE MODAL (FOR USERS) ---
+        // --- SUBMIT POSE MODAL ---
         const btnSubmitPose = document.getElementById('btnSubmitPose');
         const btnSubmitPoseMobile = document.getElementById('btnSubmitPoseMobile');
         const submitPoseModal = document.getElementById('submitPoseModal');
@@ -417,7 +398,6 @@ async function initPickpose() {
         const submitPoseForm = document.getElementById('submitPoseForm');
         const submitPoseSuccessMsg = document.getElementById('submitPoseSuccessMsg');
 
-        // New Submission UI Elements
         const btnUserTabFile = document.getElementById('btnUserTabFile');
         const btnUserTabUrl = document.getElementById('btnUserTabUrl');
         const userSourceFileArea = document.getElementById('userSourceFileArea');
@@ -426,7 +406,7 @@ async function initPickpose() {
         const userPoseFileInput = document.getElementById('userPoseFileInput');
         const userPosePreviewGrid = document.getElementById('userPosePreviewGrid');
 
-        let userUploadedImageData = null; // Store compressed base64
+        let userUploadedImageData = null;
 
         if (btnSubmitPose && submitPoseModal) {
             btnSubmitPose.addEventListener('click', () => {
@@ -467,7 +447,6 @@ async function initPickpose() {
         if (closeSubmitPoseModal) closeSubmitPoseModal.addEventListener('click', closeSubmitModal);
         if (submitPoseModalBg) submitPoseModalBg.addEventListener('click', closeSubmitModal);
 
-        // Tab Switching Logic
         btnUserTabFile?.addEventListener('click', () => {
             userSourceFileArea.classList.remove('hidden');
             userSourceUrlArea.classList.add('hidden');
@@ -488,7 +467,6 @@ async function initPickpose() {
             document.getElementById('submitPoseUrl').required = true;
         });
 
-        // File Selection Logic
         userPoseDropZone?.addEventListener('click', () => userPoseFileInput.click());
 
         userPoseDropZone?.addEventListener('dragover', (e) => {
@@ -509,7 +487,7 @@ async function initPickpose() {
         });
 
         async function handleUserFiles(files) {
-            const file = files[0]; // Limit to one for users
+            const file = files[0];
             if (!file.type.startsWith('image/')) return alert("Please select an image file.");
 
             userPoseDropZone.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary); margin-bottom: 15px; display: block;"></i><p>Optimizing Photo...</p>';
@@ -597,32 +575,25 @@ function buildFilterButtons(poses, container, searchInput) {
     if (!container) return;
     container.innerHTML = '';
 
-    // 1. Advanced Filters Button (at left)
     const btnToggleFilters = document.createElement('button');
     btnToggleFilters.id = 'btnToggleFilters';
-    btnToggleFilters.className = 'filter-drawer-trigger'; // Match the CSS trigger class
+    btnToggleFilters.className = 'filter-drawer-trigger';
     btnToggleFilters.title = 'Detailed Filters';
     btnToggleFilters.innerHTML = '<i class="fa-solid fa-sliders"></i>';
     container.appendChild(btnToggleFilters);
 
-    // 2. Categories
     const categories = new Set();
     poses.forEach(p => {
         if (p.category) categories.add(p.category.toLowerCase());
     });
     const sortedCategories = Array.from(categories)
-        .filter(cat => cat !== 'favorites') // Exclude 'favorites'
+        .filter(cat => cat !== 'favorites')
         .sort((a, b) => {
             const indexA = categoryPriority.indexOf(a);
             const indexB = categoryPriority.indexOf(b);
-
-            // If both are in priority list, sort by their index
             if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-            // If only A is pinned, it goes first
             if (indexA !== -1) return -1;
-            // If only B is pinned, it goes first
             if (indexB !== -1) return 1;
-            // Otherwise, alphabetical
             return a.localeCompare(b);
         });
 
@@ -640,7 +611,6 @@ function buildFilterButtons(poses, container, searchInput) {
         container.appendChild(btn);
     });
 
-    // 3. Saved Poses Button (at end of categories row)
     const btnSavedPoses = document.createElement('button');
     btnSavedPoses.id = 'btnSavedPoses';
     btnSavedPoses.className = 'nav-icon-link category-saved-btn';
@@ -648,7 +618,6 @@ function buildFilterButtons(poses, container, searchInput) {
     btnSavedPoses.innerHTML = '<i class="fa-solid fa-heart"></i><span>Saved</span>';
     container.appendChild(btnSavedPoses);
 
-    // --- Utility Button Listeners ---
     if (btnToggleFilters) {
         btnToggleFilters.addEventListener('click', () => {
             const filterDrawer = document.getElementById('filterDrawer');
@@ -659,8 +628,6 @@ function buildFilterButtons(poses, container, searchInput) {
     if (btnSavedPoses) {
         btnSavedPoses.addEventListener('click', () => {
             const isClosing = btnSavedPoses.classList.contains('active');
-
-            // Clear category filters
             container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
 
             if (isClosing) {
@@ -679,19 +646,14 @@ function buildFilterButtons(poses, container, searchInput) {
     container.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            // Also deactivate Saved Poses if a category is clicked
             if (btnSavedPoses) btnSavedPoses.classList.remove('active');
-
             const targetBtn = e.target.closest('.filter-btn');
             targetBtn.classList.add('active');
             activeCategory = targetBtn.dataset.filter;
             filterCards();
         });
     });
-
-    // Difficulty buttons are now exclusively in the Advanced Filter Drawer
 }
-
 
 
 // --- INTERACTIVE FEATURE TOUR ---
@@ -722,7 +684,6 @@ const tourSteps = [
 function startFeatureTour() {
     currentTourStep = 0;
 
-    // Create UI if not exists
     let overlay = document.querySelector('.tour-overlay');
     if (!overlay) {
         overlay = document.createElement('div');
@@ -764,7 +725,6 @@ function showTourStep(index) {
     const nextBtn = document.getElementById('btnTourNext');
 
     if (!target || !spotlight || !tooltip) {
-        // Skip this step if element not found
         currentTourStep++;
         if (currentTourStep < tourSteps.length) showTourStep(currentTourStep);
         else endTour();
@@ -774,32 +734,26 @@ function showTourStep(index) {
     const rect = target.getBoundingClientRect();
     const padding = 10;
 
-    // Scroll element into view if needed
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    // Wait a brief moment for scroll to finish before calculating final position
     setTimeout(() => {
         const finalRect = target.getBoundingClientRect();
 
-        // Highlight Target (Make it pop through the dark overlay)
         target.classList.add('tour-target-active');
-        target.style.zIndex = '10007'; // Above spotlight (10006)
+        target.style.zIndex = '10007';
         if (window.getComputedStyle(target).position === 'static') {
             target.style.position = 'relative';
         }
 
-        // Position Spotlight
         spotlight.style.top = (finalRect.top - padding) + 'px';
         spotlight.style.left = (finalRect.left - padding) + 'px';
         spotlight.style.width = (finalRect.width + (padding * 2)) + 'px';
         spotlight.style.height = (finalRect.height + (padding * 2)) + 'px';
 
-        // Update Content
         document.getElementById('tourTitle').textContent = step.title;
         document.getElementById('tourText').textContent = step.content;
         nextBtn.textContent = index === tourSteps.length - 1 ? 'Finish' : 'Next';
 
-        // Position Tooltip
         tooltip.classList.remove('visible');
 
         setTimeout(() => {
@@ -807,7 +761,6 @@ function showTourStep(index) {
             let top = finalRect.bottom + 25;
             let left = finalRect.left + (finalRect.width / 2) - (tooltipRect.width / 2);
 
-            // Adjust if tooltip goes off screen
             if (top + tooltipRect.height > window.innerHeight) {
                 top = finalRect.top - tooltipRect.height - 25;
             }
@@ -820,7 +773,7 @@ function showTourStep(index) {
             tooltip.style.left = left + 'px';
             tooltip.classList.add('visible');
         }, 100);
-    }, 400); // Wait for scroll animation
+    }, 400);
 }
 
 function endTour() {
@@ -830,7 +783,6 @@ function endTour() {
         setTimeout(() => overlay.style.display = 'none', 300);
     }
 
-    // Final cleanup of target styling
     document.querySelectorAll('.tour-target-active').forEach(el => {
         el.classList.remove('tour-target-active');
         el.style.zIndex = '';
@@ -845,7 +797,6 @@ function filterCards() {
     const grid = document.getElementById('posesGrid');
     if (!grid) return;
 
-    // 1. Filter Data
     let filtered = posesData.filter(pose => {
         let matchCategory = false;
         if (activeCategory === 'all') {
@@ -855,10 +806,10 @@ function filterCards() {
         } else {
             matchCategory = (pose.category && pose.category.toLowerCase() === activeCategory);
         }
+
         let matchGender = true;
         if (activeGender !== 'all') {
             const mg = pose.gender || 'none';
-            // "Both" matches "both" explicitly. (In a real app, logic might be more complex)
             matchGender = mg === activeGender || mg === 'both';
         }
 
@@ -882,18 +833,13 @@ function filterCards() {
         return matchCategory && matchGender && matchSearch && matchDifficulty;
     });
 
-    // 2. Pagination / Paywall limit removed
-    const isAuth = isLoggedIn();
-    const totalCount = filtered.length;
-
-    // 3. Render
     grid.innerHTML = '';
-    currentFilteredPoses = filtered; // Update our global list for modal navigation
+    currentFilteredPoses = filtered;
 
     filtered.forEach(pose => {
         const card = document.createElement('div');
         card.className = 'pose-card';
-        const difficulty = pose.difficulty || 'beginner'; // fallback for old data
+        const difficulty = pose.difficulty || 'beginner';
         card.innerHTML = `
             <div class="image-container">
                 <img src="${pose.images[0]}" alt="${pose.category}" loading="lazy">
@@ -904,12 +850,9 @@ function filterCards() {
         card.addEventListener('click', () => openModal(pose));
         grid.appendChild(card);
     });
-
-    // 4. Paywall removed
 }
 
 function renderGrid(data, gridElement) {
-    // Initial render is just filtering
     filterCards();
 }
 
@@ -919,7 +862,6 @@ function isLoggedIn() {
 
 let isAuthInitialized = false;
 
-// Expose modal opener globally so inline handlers (like Paywall) work
 window.openAuthModal = (stepId = 'authModeSelection') => {
     const authModal = document.getElementById('authModal');
     if (authModal) {
@@ -934,7 +876,10 @@ function setupAuth() {
     const authModalBg = document.getElementById('authModalBg');
     const closeAuthBtn = document.getElementById('closeAuthModal');
 
-    // Init UI State callback for Firebase
+    // ============================================================
+    // FIX: onAuthStateChanged — uses module-scoped latestBroadcastData
+    // and module-scoped showWhatsNewModal — no more reference errors
+    // ============================================================
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             try {
@@ -947,7 +892,6 @@ function setupAuth() {
             }
         } else {
             favoritePoseIds = [];
-            // Reset to 'all' if logged out while in favorites
             if (activeCategory === 'favorites') {
                 activeCategory = 'all';
                 const filterContainer = document.getElementById('filterContainer');
@@ -956,19 +900,20 @@ function setupAuth() {
                 });
             }
         }
-        
+
         isAuthInitialized = true;
         updateHeaderAuthUI(user);
 
         const onboardingOverlay = document.getElementById('onboardingOverlay');
+        // FIX: Check if we are mid-redirect before showing/hiding onboarding
         const isGoogleRedirectPending = localStorage.getItem('pickpose_google_action');
-        
+
         if (user) {
-            // FORCE hide onboarding if we have a user
+            // User is logged in — always hide onboarding
             onboardingOverlay?.classList.add('hidden');
             document.body.style.overflow = '';
 
-            // Check for unread announcements
+            // FIX: latestBroadcastData now accessible (module scope)
             if (latestBroadcastData) {
                 const lastSeenVersion = localStorage.getItem('pickpose_last_version');
                 if (latestBroadcastData.version !== lastSeenVersion) {
@@ -976,18 +921,18 @@ function setupAuth() {
                 }
             }
         } else if (!isGoogleRedirectPending) {
-            // ONLY show onboarding if we aren't waiting for a redirect landing
+            // No user AND no redirect pending — show onboarding normally
             onboardingOverlay?.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
             if (typeof resetOnboardingCarousel === 'function') resetOnboardingCarousel();
         }
+        // If isGoogleRedirectPending is set, do nothing — getRedirectResult below will handle it
 
         filterCards();
     });
 
     if (!authModal) return;
 
-    // Separate Header Buttons
     const btnNavLogin = document.getElementById('btnNavLogin');
     const btnNavSignup = document.getElementById('btnNavSignup');
     const btnNavLogout = document.getElementById('btnNavLogout');
@@ -1002,7 +947,6 @@ function setupAuth() {
             btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Logging out...`;
             try {
                 await signOut(auth);
-                // Auth state observer handles the UI update
             } catch (err) {
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;
@@ -1011,7 +955,6 @@ function setupAuth() {
         });
     }
 
-    // Handle Profile Drawer toggle
     const userIcon = document.getElementById('userProfileIcon');
     const profileDrawer = document.getElementById('profileDrawer');
     const closeProfileDrawer = document.getElementById('closeProfileDrawer');
@@ -1029,7 +972,6 @@ function setupAuth() {
             });
         }
 
-        // Close drawer if clicking elsewhere
         document.addEventListener('click', (e) => {
             const drawerContent = profileDrawer.querySelector('.drawer-content');
             if (!profileDrawer.classList.contains('hidden') &&
@@ -1041,12 +983,12 @@ function setupAuth() {
         });
     }
 
-    // Drawer Menu Navigation
     const btnProfileDetails = document.getElementById('btnProfileDetails');
     const btnDrawerAddPose = document.getElementById('btnDrawerAddPose');
     const btnDrawerAbout = document.getElementById('btnDrawerAbout');
     const btnDrawerContact = document.getElementById('btnDrawerContact');
     const btnDrawerLogout = document.getElementById('btnDrawerLogout');
+    const btnDrawerInstall = document.getElementById('btnDrawerInstall');
 
     if (btnProfileDetails) {
         btnProfileDetails.addEventListener('click', () => {
@@ -1079,14 +1021,10 @@ function setupAuth() {
     if (btnDrawerInstall) {
         btnDrawerInstall.addEventListener('click', async () => {
             if (deferredPrompt) {
-                // Show the browser's native install prompt
                 deferredPrompt.prompt();
-                // Wait for the user to respond to the prompt
                 const { outcome } = await deferredPrompt.userChoice;
                 console.log(`PWA Install User Response: ${outcome}`);
-                // Clear the deferred prompt variable since it can only be used once
                 deferredPrompt = null;
-                // Hide the install button
                 btnDrawerInstall.classList.add('hidden');
             }
         });
@@ -1097,7 +1035,6 @@ function setupAuth() {
             profileDrawer.classList.add('hidden');
             document.body.style.overflow = '';
 
-            // CLEAR ONBOARDING STATE
             localStorage.removeItem('pickpose_onboarding_seen');
             if (typeof currentOnboardingSlide !== 'undefined') {
                 if (typeof resetOnboardingCarousel === 'function') {
@@ -1115,7 +1052,6 @@ function setupAuth() {
         });
     }
 
-    // Account Details Modal Close
     const profileDetailsModal = document.getElementById('profileDetailsModal');
     const closeProfileDetails = document.getElementById('closeProfileDetails');
     const profileDetailsBg = document.getElementById('profileDetailsBg');
@@ -1128,7 +1064,6 @@ function setupAuth() {
     if (closeProfileDetails) closeProfileDetails.addEventListener('click', closeDetails);
     if (profileDetailsBg) profileDetailsBg.addEventListener('click', closeDetails);
 
-    // Modal Close
     const closeMod = () => {
         if (auth.currentUser) {
             getDoc(doc(db, "users", auth.currentUser.uid)).then(snap => {
@@ -1137,7 +1072,7 @@ function setupAuth() {
         }
         authModal.classList.add('hidden');
         document.body.style.overflow = '';
-    }
+    };
     closeAuthBtn.addEventListener('click', closeMod);
     authModalBg.addEventListener('click', closeMod);
 
@@ -1150,7 +1085,7 @@ function setupAuth() {
         document.getElementById(stepId).classList.remove('hidden');
         document.getElementById('authWizardErrorMsg').classList.add('hidden');
     }
-    window.showStep = showStep; // EXPOSE SO openAuthModal CAN DETECT IT
+    window.showStep = showStep;
 
     const showError = (msg, isSuccess = false) => {
         const errEl = document.getElementById('authWizardErrorMsg');
@@ -1160,40 +1095,73 @@ function setupAuth() {
         errEl.classList.remove('hidden');
     };
 
-    // --- HANDLE REDIRECT RESULT (FOR MOBILE) ---
+    // ============================================================
+    // FIX: getRedirectResult — fully rewritten to handle mobile
+    // redirect flow without relying on closeMod() (modal not open
+    // on redirect landing) or inner-scoped showWhatsNewModal
+    // ============================================================
     getRedirectResult(auth)
         .then(async (result) => {
+            const actionType = localStorage.getItem('pickpose_google_action') || 'login';
+            localStorage.removeItem('pickpose_google_action'); // Always clear the flag
+
             if (result && result.user) {
                 console.log("Redirect Auth Success:", result.user.email);
-                const actionType = localStorage.getItem('pickpose_google_action') || 'login';
-                await processGoogleResult(result.user, actionType);
+
+                const userRef = doc(db, "users", result.user.uid);
+                const snap = await getDoc(userRef);
+
+                if (actionType === 'login') {
+                    if (snap.exists()) {
+                        // ✅ SUCCESS: valid user returned from redirect
+                        // Do NOT call closeMod() — modal was never opened on this reload
+                        // onAuthStateChanged will fire and handle the UI correctly
+                        document.getElementById('onboardingOverlay')?.classList.add('hidden');
+                        document.body.style.overflow = '';
+                        updateHeaderAuthUI(result.user);
+                    } else {
+                        // No account found — sign out and show error
+                        await signOut(auth);
+                        window.openAuthModal('authGoogleChoice');
+                        showError("Sign Up! You have no account.");
+                    }
+                } else if (actionType === 'signup') {
+                    if (snap.exists()) {
+                        // Already has an account
+                        window.openAuthModal('authGoogleChoice');
+                        showError("Account already exists! Please click 'Log In with Google' instead.", true);
+                    } else {
+                        // New signup — needs username
+                        wizardData.isGoogleSignup = true;
+                        wizardData.email = result.user.email;
+                        window.openAuthModal('authSignupStep4');
+                    }
+                }
             }
-            // Clear the flag and update UI
-            localStorage.removeItem('pickpose_google_action');
-            updateHeaderAuthUI(auth.currentUser);
+            // If result is null: normal page load (not a redirect return) — do nothing
         })
         .catch((error) => {
-            console.error("Redirect Auth Error Detail:", error.code, error.message);
-            localStorage.removeItem('pickpose_google_action'); // Clear flag on error too
-            
-            // On redirect errors, we MUST show the modal so the user sees the message
-            if (error.code !== 'auth/redirect-cancelled-by-user') {
-                window.openAuthModal('authModeSelection'); // Open the modal first
-                
-                if (error.code === 'auth/web-storage-unsupported') {
-                    showError("Mobile Auth Error: Your browser blocks third-party cookies/storage. Please disable 'Block All Cookies' or 'Secret Mode'.");
-                } else if (error.code === 'auth/unauthorized-domain') {
-                    showError("Domain Not Authorized: Please add '" + window.location.hostname + "' to Firebase Authorized Domains in Console.");
-                } else {
-                    showError("Redirect Login failed: " + error.message);
-                }
-            } else {
-                // If cancelled, we should show the onboarding since no login is happening
-                const onboardingOverlay = document.getElementById('onboardingOverlay');
+            console.error("Redirect Auth Error:", error.code, error.message);
+            localStorage.removeItem('pickpose_google_action');
+
+            if (error.code === 'auth/redirect-cancelled-by-user') {
+                // User cancelled — show onboarding if not logged in
                 if (!auth.currentUser) {
-                    onboardingOverlay?.classList.remove('hidden');
+                    document.getElementById('onboardingOverlay')?.classList.remove('hidden');
                     document.body.style.overflow = 'hidden';
                 }
+                return;
+            }
+
+            // All other errors — open modal and display message
+            window.openAuthModal('authModeSelection');
+
+            if (error.code === 'auth/web-storage-unsupported') {
+                showError("Mobile Auth Error: Your browser blocks third-party cookies/storage. Please disable 'Block All Cookies' or 'Private/Incognito' mode.");
+            } else if (error.code === 'auth/unauthorized-domain') {
+                showError(`Domain Not Authorized: Please add '${window.location.hostname}' to Firebase Authorized Domains in Console.`);
+            } else {
+                showError("Redirect Login failed: " + error.message);
             }
         });
 
@@ -1234,12 +1202,16 @@ function setupAuth() {
 
         try {
             if (isMobile || isStandalone) {
+                // FIX: Set the action flag BEFORE calling signInWithRedirect
+                // so getRedirectResult knows what to do when user returns
                 localStorage.setItem('pickpose_google_action', actionType);
-                console.log("Attempting Mobile Redirect...");
+                console.log("Attempting Mobile Redirect for action:", actionType);
                 try {
                     await signInWithRedirect(auth, provider);
+                    // Page will redirect away — code below will not run
                 } catch (redirectError) {
                     console.warn("Redirect failed, attempting Popup fallback...", redirectError);
+                    localStorage.removeItem('pickpose_google_action'); // Clear flag if falling back to popup
                     const result = await signInWithPopup(auth, provider);
                     await processGoogleResult(result.user, actionType);
                 }
@@ -1249,7 +1221,8 @@ function setupAuth() {
                 await processGoogleResult(result.user, actionType);
             }
         } catch (error) {
-            console.error("Google Auth Error Detail:", error.code, error.message);
+            console.error("Google Auth Error:", error.code, error.message);
+            localStorage.removeItem('pickpose_google_action'); // Clear flag on error
             let userMsg = error.message;
 
             if (error.code === 'auth/popup-blocked') {
@@ -1259,51 +1232,46 @@ function setupAuth() {
             } else if (error.code === 'auth/operation-not-allowed') {
                 userMsg = "Google login is currently disabled in Firebase Console.";
             } else if (error.code === 'auth/unauthorized-domain') {
-                userMsg = "Domain Not Authorized: Add '" + window.location.hostname + "' to Firebase Authorized Domains.";
+                userMsg = `Domain Not Authorized: Add '${window.location.hostname}' to Firebase Authorized Domains.`;
             } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
                 userMsg = "Login cancelled.";
             }
 
             showError("Google Sign-In failed: " + userMsg);
-        }
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
         }
     }
 
+    // Used by DESKTOP popup flow and popup fallback
     async function processGoogleResult(user, actionType) {
         const userRef = doc(db, "users", user.uid);
         const snap = await getDoc(userRef);
-        
+
         if (actionType === 'login') {
             if (snap.exists()) {
-                // Success, let them in
                 closeMod();
-                const onboardingOverlay = document.getElementById('onboardingOverlay');
-                onboardingOverlay?.classList.add('hidden');
+                document.getElementById('onboardingOverlay')?.classList.add('hidden');
                 document.body.style.overflow = '';
                 updateHeaderAuthUI();
             } else {
-                // Does not exist, sign them out and show error
                 await signOut(auth);
-                window.openAuthModal('authGoogleChoice'); // Ensure modal is open!
+                window.openAuthModal('authGoogleChoice');
                 showError("Sign Up! You have no account.");
             }
         } else if (actionType === 'signup') {
             if (snap.exists()) {
-                // Already exists
-                window.openAuthModal('authGoogleChoice'); // Ensure modal is open!
+                window.openAuthModal('authGoogleChoice');
                 showError("Account already exists! Please click 'Log In with Google' instead.", true);
             } else {
-                // Needs a username! Switch to step 4
                 wizardData.isGoogleSignup = true;
                 wizardData.email = user.email;
-                window.openAuthModal('authSignupStep4'); // Ensure modal is open!
+                window.openAuthModal('authSignupStep4');
             }
         }
     }
-
 
     // --- LOGIN FLOW ---
     document.getElementById('btnLoginSubmit').addEventListener('click', async () => {
@@ -1313,11 +1281,10 @@ function setupAuth() {
 
         const btn = document.getElementById('btnLoginSubmit');
         btn.disabled = true; btn.textContent = "Logging in...";
-        showError("", true); // clear
+        showError("", true);
 
         try {
             let userEmail = identifier;
-            // If they entered a username (no @), look up their email in Firestore
             if (!identifier.includes('@')) {
                 const q = query(collection(db, "users"), where("username", "==", identifier));
                 const snap = await getDocs(q);
@@ -1325,7 +1292,6 @@ function setupAuth() {
                 userEmail = snap.docs[0].data().email;
             }
 
-            // Execute Login
             await signInWithEmailAndPassword(auth, userEmail, pwd);
             closeMod();
         } catch (error) {
@@ -1350,16 +1316,13 @@ function setupAuth() {
         showError("", true);
 
         try {
-            // Generate 6 digit OTP
             pendingOtp = Math.floor(100000 + Math.random() * 900000).toString();
             wizardData.email = email;
 
-            // Calculate expiry time (15 mins from now) for the email template
             const expiryTime = new Date();
             expiryTime.setMinutes(expiryTime.getMinutes() + 15);
             const timeString = expiryTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            // Send via EmailJS using user keys
             await emailjs.send('service_k0necvi', 'template_ymbsgzi', {
                 to_email: email,
                 email: email,
@@ -1410,7 +1373,7 @@ function setupAuth() {
     });
 
     document.getElementById('btnResendOtp').addEventListener('click', () => {
-        document.getElementById('btnSignupSendOtp').click(); // trigger resend
+        document.getElementById('btnSignupSendOtp').click();
         showError("Code resent successfully!", true);
     });
 
@@ -1447,7 +1410,7 @@ function setupAuth() {
         });
     });
 
-    // Step 4: Finalize Signup (Check Username + Create Auth)
+    // Step 4: Finalize Signup
     document.getElementById('btnSignupFinal').addEventListener('click', async () => {
         const uname = document.getElementById('signupUsername').value.trim();
         if (!uname || uname.length < 3) return showError("Username must be at least 3 chars.");
@@ -1457,23 +1420,18 @@ function setupAuth() {
         showError("", true);
 
         try {
-            // 1. Check if username is taken in Firestore
             const q = query(collection(db, "users"), where("username", "==", uname));
             const snap = await getDocs(q);
             if (!snap.empty) throw new Error("Username already taken! Please pick another.");
 
             if (wizardData.isGoogleSignup && auth.currentUser) {
-                // 2. Google Signup Process (Auth already handled)
                 await setDoc(doc(db, "users", auth.currentUser.uid), {
                     username: uname,
                     email: auth.currentUser.email,
                     createdAt: new Date()
                 });
             } else {
-                // 2. Create Firebase Account for Email Users
                 const newCred = await createUserWithEmailAndPassword(auth, wizardData.email, wizardData.password);
-
-                // 3. Save to Firestore
                 await setDoc(doc(db, "users", newCred.user.uid), {
                     username: uname,
                     email: wizardData.email,
@@ -1481,10 +1439,8 @@ function setupAuth() {
                 });
             }
 
-            // Successfully fully established an account
             closeMod();
-            const onboardingOverlay = document.getElementById('onboardingOverlay');
-            onboardingOverlay?.classList.add('hidden');
+            document.getElementById('onboardingOverlay')?.classList.add('hidden');
             document.body.style.overflow = '';
             updateHeaderAuthUI();
         } catch (error) {
@@ -1509,18 +1465,14 @@ function updateHeaderAuthUI(explicitUser = null) {
         if (btnSubmitPose) btnSubmitPose.classList.remove('hidden');
         if (btnSubmitPoseMobile) btnSubmitPoseMobile.classList.remove('hidden');
 
-        // Hide About/Contact from navbar when logged in (Consolidated to profile menu)
         if (btnAbout) btnAbout.classList.add('hidden');
         if (btnContact) btnContact.classList.add('hidden');
 
-        // Populate Drawer Info
-        const user = auth.currentUser;
         const profileEmail = document.getElementById('profileEmail');
         const profileUsername = document.getElementById('profileUsername');
 
         if (profileEmail) profileEmail.textContent = user.email;
         if (profileUsername) {
-            // Try to get username from Firestore
             const userRef = doc(db, "users", user.uid);
             getDoc(userRef).then(snap => {
                 if (snap.exists()) {
@@ -1531,7 +1483,6 @@ function updateHeaderAuthUI(explicitUser = null) {
             });
         }
 
-        // Admin Shortcut for saich@pickpose.app
         const btnAdmin = document.getElementById('btnAdminDashboard');
         if (btnAdmin) {
             if (user.email === 'saich@pickpose.app') {
@@ -1546,7 +1497,6 @@ function updateHeaderAuthUI(explicitUser = null) {
         if (btnSubmitPose) btnSubmitPose.classList.add('hidden');
         if (btnSubmitPoseMobile) btnSubmitPoseMobile.classList.add('hidden');
 
-        // Show About/Contact for guests
         if (btnAbout) btnAbout.classList.remove('hidden');
         if (btnContact) btnContact.classList.remove('hidden');
     }
@@ -1568,7 +1518,6 @@ async function openProfileDetails() {
     document.getElementById('detailUid').textContent = user.uid;
     document.getElementById('detailEmail').textContent = user.email;
 
-    // Member since
     try {
         const userRef = doc(db, "users", user.uid);
         const snap = await getDoc(userRef);
@@ -1592,7 +1541,6 @@ let isZooming = false;
 let lastTouchDist = 0;
 let lastTouchX = 0;
 let lastTouchY = 0;
-// activePoseContext is already declared globally at line 16
 
 function setupModal() {
     const modal = document.getElementById('poseModal');
@@ -1630,16 +1578,14 @@ function setupModal() {
         });
     }
 
-    // Platform-specific share handlers
     document.querySelectorAll('.share-item').forEach(btn => {
         btn.addEventListener('click', async () => {
             if (!activePoseContext) return;
             const platform = btn.dataset.platform;
-            const shareUrl = window.location.href; // In production this would be the specific pose URL
+            const shareUrl = window.location.href;
             const shareText = `Check out this pose on PickPose: ${activePoseContext.title || 'Untitled Pose'}`;
             const imageUrl = activePoseContext.images[0];
 
-            // Use Web Share API if on mobile and platform isn't 'copy'
             if (navigator.share && platform !== 'copy' && /Mobi|Android/i.test(navigator.userAgent)) {
                 try {
                     await navigator.share({
@@ -1654,7 +1600,6 @@ function setupModal() {
                 }
             }
 
-            // Fallback intent URLs or Copy Link
             let intentUrl = "";
             switch (platform) {
                 case 'whatsapp':
@@ -1670,7 +1615,6 @@ function setupModal() {
                     window.open(intentUrl, '_blank');
                     break;
                 case 'instagram':
-                    // Instagram doesn't have a direct share URL for web. We'll copy link as fallback.
                     copyToClipboard(shareUrl);
                     alert("Instagram sharing is best on mobile app. Link copied to clipboard!");
                     break;
@@ -1709,21 +1653,15 @@ function setupModal() {
         }
     }
 
-    // --- ZOOM & PAN ENGINE ---
-
-    // Double Tap / Click to toggle zoom
     modalImg.addEventListener('dblclick', (e) => {
         if (zoomState.scale > 1) {
             resetZoom();
         } else {
             zoomState.scale = 2.5;
-            // Center on click point
-            const rect = modalImg.getBoundingClientRect();
             updateZoomTransform();
         }
     });
 
-    // Mouse Wheel Zoom
     imgWrapper.addEventListener('wheel', (e) => {
         e.preventDefault();
         const delta = e.deltaY > 0 ? 0.9 : 1.1;
@@ -1734,7 +1672,6 @@ function setupModal() {
         }
     }, { passive: false });
 
-    // Touch Handles for Pinch & Pan
     let isPanning = false;
     let panStartX = 0;
     let panStartY = 0;
@@ -1752,7 +1689,6 @@ function setupModal() {
             panStartY = e.touches[0].pageY - zoomState.y;
         }
 
-        // For swipe navigation
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
     }, { passive: true });
@@ -1783,7 +1719,6 @@ function setupModal() {
         if (e.touches.length < 2) isZooming = false;
         if (e.touches.length === 0) isPanning = false;
 
-        // Handle swipe navigation only if NOT zoomed
         if (zoomState.scale <= 1.1) {
             touchEndX = e.changedTouches[0].screenX;
             touchEndY = e.changedTouches[0].screenY;
@@ -1791,11 +1726,8 @@ function setupModal() {
         }
     });
 
-    // Prevent default ghost drag
     modalImg.addEventListener('dragstart', (e) => e.preventDefault());
 
-
-    // Setup Favorite Heart clicking
     const btnFavorite = document.getElementById('btnFavorite');
     if (btnFavorite) {
         btnFavorite.addEventListener('click', async () => {
@@ -1815,7 +1747,6 @@ function setupModal() {
         });
     }
 
-    // Connect previously non-working Info button
     const btnInfo = document.querySelector('.fa-circle-info');
     if (btnInfo) {
         btnInfo.addEventListener('click', () => {
@@ -1826,7 +1757,6 @@ function setupModal() {
         });
     }
 
-    // Connect previously non-working Edit button
     const btnEdit = document.querySelector('.btn-edit');
     if (btnEdit) {
         btnEdit.addEventListener('click', () => {
@@ -1834,7 +1764,6 @@ function setupModal() {
         });
     }
 
-    // Connect previously non-working Trash button
     const btnTrash = document.querySelector('.fa-trash');
     if (btnTrash) {
         btnTrash.addEventListener('click', () => {
@@ -1854,7 +1783,6 @@ function openModal(pose) {
     activePoseContext = pose;
     modalImg.src = pose.images[0];
 
-    // Reset zoom state on open
     zoomState = { scale: 1, x: 0, y: 0 };
     modalImg.style.transform = `translate(0,0) scale(1)`;
 
@@ -1863,7 +1791,6 @@ function openModal(pose) {
 
     document.body.style.overflow = 'hidden';
 
-    // Toggle Heart Icon UI
     if (btnFavorite) {
         if (favoritePoseIds.includes(pose.docId)) {
             btnFavorite.classList.remove('fa-regular');
@@ -1876,7 +1803,6 @@ function openModal(pose) {
         }
     }
 
-    // Render Clickable Tags
     if (modalTags && pose.tags) {
         modalTags.innerHTML = '';
         pose.tags.forEach(tag => {
@@ -1890,37 +1816,30 @@ function openModal(pose) {
                     searchQuery = tag.toLowerCase();
                     filterCards();
                 }
-                modal.classList.add('hidden'); // Close modal on search
+                modal.classList.add('hidden');
             });
             modalTags.appendChild(span);
         });
     }
 
     modal.classList.remove('hidden');
-
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     initPickpose();
     setupModal();
 
-    // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js').then(reg => {
                 console.log('Service Worker registered:', reg.scope);
-
-                // Check for updates periodically
                 reg.update();
 
-                // Listen for any new service worker waiting to take over
                 reg.onupdatefound = () => {
                     const newWorker = reg.installing;
                     newWorker.onstatechange = () => {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            // New version is ready!
                             console.log('New update available. Refreshing...');
-                            // Show a small toast if you want, or just reload
                             window.location.reload();
                         }
                     };
@@ -1930,7 +1849,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Ensure we only reload once
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             if (refreshing) return;
@@ -1939,20 +1857,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- MANAGE PWA INSTALL PROMPT ---
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevent the mini-infobar from appearing on mobile
         e.preventDefault();
-        // Stash the event so it can be triggered later.
         deferredPrompt = e;
 
-        // --- 1. Manage Drawer Install Button ---
         const installBtn = document.getElementById('btnDrawerInstall');
         if (installBtn) {
             installBtn.classList.remove('hidden');
         }
 
-        // --- 2. Manage Onboarding Install Button ---
         const onboardingInstallBtn = document.getElementById('btnOnboardingInstall');
         if (onboardingInstallBtn) {
             onboardingInstallBtn.classList.remove('hidden');
@@ -1965,15 +1878,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // --- 3. Auto-Show Installation Popup ---
-        // Only show if user hasn't dismissed it in this session
         if (!sessionStorage.getItem('pwa_popup_dismissed')) {
             const popup = document.getElementById('pwaInstallPopup');
             if (popup) {
                 setTimeout(() => {
                     popup.classList.remove('hidden');
                     setupPwaPopupListeners(popup);
-                }, 2000); // 2 second delay for better feel
+                }, 2000);
             }
         }
     });
@@ -2030,25 +1941,21 @@ function initOnboarding() {
             currentOnboardingSlide++;
             updateOnboardingUI();
         } else {
-            // Final slide: Open Auth Modal
             localStorage.setItem('pickpose_onboarding_seen', 'true');
             window.openAuthModal('authModeSelection');
         }
     });
 
     function updateOnboardingUI() {
-        // Scroll to the current slide
         carousel.scrollTo({
             left: carousel.offsetWidth * currentOnboardingSlide,
             behavior: 'smooth'
         });
 
-        // Update dots
         dots.forEach((dot, idx) => {
             dot.classList.toggle('active', idx === currentOnboardingSlide);
         });
 
-        // Update button text on last slide
         if (currentOnboardingSlide === totalSlides - 1) {
             btnNext.textContent = 'Get Started';
             btnNext.style.background = 'var(--primary)';
@@ -2058,20 +1965,18 @@ function initOnboarding() {
         }
     }
 
-    // EXPOSE UI UPDATE SO LOGOUT CAN RESET IT
     window.resetOnboardingCarousel = () => {
         currentOnboardingSlide = 0;
         updateOnboardingUI();
     };
 
-    // Handle window resize to keep scroll aligned
     window.addEventListener('resize', () => {
         carousel.scrollLeft = carousel.offsetWidth * currentOnboardingSlide;
     });
 }
 
 // ============================================================
-// IMAGE PROCESSING UTILITIES (PORTED FROM ADMIN)
+// IMAGE PROCESSING UTILITIES
 // ============================================================
 const TARGET_ASPECT = 4 / 5;
 
@@ -2083,10 +1988,8 @@ async function compressImageForUser(file, maxWidth = 1800, quality = 0.94) {
             const img = new Image();
             img.src = event.target.result;
             img.onload = async () => {
-                // 1. Detect faces (simulated for user side if not loaded)
                 const crop = getSmartCropRectForUser(img.width, img.height, []);
 
-                // 2. Scale cropped region
                 let outW = crop.w;
                 let outH = crop.h;
                 if (outW > maxWidth) {
@@ -2124,7 +2027,6 @@ function getSmartCropRectForUser(imgW, imgH, faces) {
     cropX = Math.round((imgW - cropW) / 2);
     cropY = Math.round((imgH - cropH) / 2);
 
-    // Bias toward top third for poses if tall
     if (imgAspect <= TARGET_ASPECT) {
         cropY = Math.round((imgH - cropH) * 0.3);
     }
