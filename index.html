@@ -11,14 +11,20 @@
     <meta name="theme-color" content="#c8a03c">
     <link rel="icon" type="image/png" href="images/pickpose-logo.png">
     <link rel="apple-touch-icon" href="images/pickpose-logo.png">
+    <link rel="canonical" href="https://pickpose.app/">
 
     <!-- SEO & Social Media Open Graph Tags -->
     <meta name="description" content="Discover, save, and share the perfect poses for your next photoshoot. The ultimate curated gallery for modern photography.">
     
     <!-- Facebook & General OpenGraph -->
+    <meta property="og:site_name" content="Pickpose">
     <meta property="og:title" content="Pickpose | The Perfect Pose Gallery">
     <meta property="og:description" content="Discover, save, and share the perfect poses for your next photoshoot. The ultimate curated gallery for modern photography.">
     <meta property="og:image" content="https://pickpose.app/images/pickpose-logo.png">
+    <meta property="og:image:secure_url" content="https://pickpose.app/images/pickpose-logo.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta property="og:url" content="https://pickpose.app/">
     <meta property="og:type" content="website">
 
@@ -27,6 +33,11 @@
     <meta name="twitter:title" content="Pickpose | The Perfect Pose Gallery">
     <meta name="twitter:description" content="Discover, save, and share the perfect poses for your next photoshoot.">
     <meta name="twitter:image" content="https://pickpose.app/images/pickpose-logo.png">
+
+    <!-- Meta Tags for WhatsApp/Google -->
+    <meta itemprop="name" content="Pickpose | The Perfect Pose Gallery">
+    <meta itemprop="description" content="Discover, save, and share the perfect poses for your next photoshoot.">
+    <meta itemprop="image" content="https://pickpose.app/images/pickpose-logo.png">
 
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700&family=Syne:wght@700;800&display=swap"
@@ -38,7 +49,7 @@
 
 <body>
     <!-- Onboarding Flow (Full Screen) -->
-    <div id="onboardingOverlay">
+    <div id="onboardingOverlay" class="hidden">
         <div class="onboarding-carousel" id="onboardingCarousel">
             <!-- Slide 1 -->
             <div class="onboarding-slide">
@@ -508,6 +519,10 @@
                             style="position: absolute; right: 15px; cursor: pointer; color: #8888a0;"
                             title="Show Password"></i>
                     </div>
+                    <div class="input-group-checkbox" style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px; cursor: pointer;">
+                        <input type="checkbox" id="loginSaveInfo" checked style="width: 16px; height: 16px; accent-color: var(--gold-accent); cursor: pointer;">
+                        <label for="loginSaveInfo" style="font-size: 13px; color: var(--text-muted); cursor: pointer; user-select: none;">Save Login Info</label>
+                    </div>
                     <button id="btnLoginSubmit" class="btn-primary">Log In</button>
                     <button class="btn-link" id="btnBackToMenuLogin"
                         style="background: none; border: none; color: #8888a0; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px;">&larr;
@@ -563,11 +578,21 @@
                         <i class="fa-solid fa-at"></i>
                         <input type="text" id="signupUsername" placeholder="username" maxlength="20">
                     </div>
+                    <div class="input-group-checkbox" style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px; cursor: pointer;">
+                        <input type="checkbox" id="signupSaveInfo" checked style="width: 16px; height: 16px; accent-color: var(--gold-accent); cursor: pointer;">
+                        <label for="signupSaveInfo" style="font-size: 13px; color: var(--text-muted); cursor: pointer; user-select: none;">Save Login Info</label>
+                    </div>
                     <button id="btnSignupFinal" class="btn-primary">Complete Signup!</button>
                 </div>
 
                 <div id="authWizardErrorMsg" style="color: red; font-size: 13px; margin-top: 15px; text-align: center;"
                     class="hidden"></div>
+
+                <!-- Legal Disclaimer -->
+                <p style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 25px; line-height: 1.4;">
+                    By continuing, you agree to Pickpose's <br>
+                    <a href="#" class="legal-link" data-type="terms" style="color: var(--gold-accent); text-decoration: none;">Terms of Service</a> & <a href="#" class="legal-link" data-type="privacy" style="color: var(--gold-accent); text-decoration: none;">Privacy Policy</a>
+                </p>
             </div>
         </div>
     </div>
@@ -864,14 +889,43 @@
                 <img src="images/pickpose-logo.png" alt="Pickpose">
             </div>
             <div class="pwa-text">
-                <h3 style="font-family: 'Syne', sans-serif; font-weight: 800; letter-spacing: -0.5px;">Install pickpose
-                    App</h3>
+                <h3 style="font-family: 'Syne', sans-serif; font-weight: 800; letter-spacing: -0.5px;">Install pickpose App</h3>
                 <p>Add to your home screen for a faster, full-screen experience.</p>
                 <p style="font-size: 0.75rem; color: var(--gold-accent); margin-top: 4px; font-weight: 600;">Developer: SAI CHADARASIPALLI</p>
             </div>
             <div class="pwa-actions">
                 <button id="btnPwaClose" class="btn-pwa-secondary">Later</button>
                 <button id="btnPwaInstall" class="btn-pwa-primary">Install</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN FOOTER -->
+    <footer style="margin-top: 60px; padding: 40px 20px; text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.05); background: rgba(10, 10, 10, 0.5); backdrop-filter: blur(10px);">
+        <div style="max-width: 1200px; margin: 0 auto;">
+            <div style="font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: #fff; margin-bottom: 20px; letter-spacing: -0.5px;">pickpose</div>
+            <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">
+                <a href="#" class="footer-link legal-link" data-type="terms" style="color: var(--text-muted); text-decoration: none; font-size: 13px; transition: color 0.2s;">Terms of Service</a>
+                <a href="#" class="footer-link legal-link" data-type="privacy" style="color: var(--text-muted); text-decoration: none; font-size: 13px; transition: color 0.2s;">Privacy Policy</a>
+                <a href="/install" style="color: var(--text-muted); text-decoration: none; font-size: 13px; transition: color 0.2s;">Install App</a>
+            </div>
+            <p style="font-size: 12px; color: rgba(255, 255, 255, 0.2);">© 2026 Pickpose. Created by SAI CHADARASIPALLI. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- LEGAL MODAL -->
+    <div id="legalModal" class="modal hidden" style="z-index: 2000;">
+        <div class="modal-bg" id="legalModalBg"></div>
+        <div class="modal-content auth-card" style="max-width: 700px; max-height: 85vh; overflow-y: auto; padding: 30px;">
+            <div class="modal-header" style="position: sticky; top: -30px; background: var(--surface); z-index: 10; padding: 10px 0; margin-bottom: 20px; border-bottom: 1px solid var(--border);">
+                <h3 id="legalTitle" class="neon-title" style="font-size: 1.3rem;">Terms of Service</h3>
+                <button id="closeLegalModal" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="legalBody" class="legal-body" style="color: var(--text-main); line-height: 1.7; font-size: 0.95rem;">
+                <!-- Content injected via JS -->
+            </div>
+            <div style="margin-top: 30px; text-align: center;">
+                <button id="closeLegalModalBtn" class="btn-primary" style="padding: 10px 30px;">I Understand</button>
             </div>
         </div>
     </div>

@@ -1,6 +1,19 @@
 import { db, auth, analytics, logEvent } from './firebase-config.js';
 import { collection, getDocs, getDoc, setDoc, doc, addDoc, query, where, updateDoc, increment, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    onAuthStateChanged, 
+    signOut, 
+    sendEmailVerification, 
+    GoogleAuthProvider, 
+    signInWithPopup, 
+    signInWithRedirect, 
+    getRedirectResult,
+    setPersistence,
+    browserLocalPersistence,
+    browserSessionPersistence
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 // No default poses — all content managed via admin panel
 const defaultPosesData = [];
 
@@ -150,9 +163,11 @@ async function initPickpose() {
                     if (notificationsBadge) notificationsBadge.classList.remove('hidden');
                     if (notificationsBellIcon) notificationsBellIcon.style.color = '#fff';
                     
-                    // Show it if it's a fresh load and they haven't seen it yet
-                    // Wait until DOM is fully loaded or call directly if already loaded
-                    showWhatsNewModal(data.message, data.version);
+                    // Show it automatically ONLY if user is already logged in
+                    // If not logged in, we wait for onAuthStateChanged to trigger it
+                    if (auth.currentUser) {
+                        showWhatsNewModal(data.message, data.version);
+                    }
                 } else {
                     // Already seen
                     if (notificationsBadge) notificationsBadge.classList.add('hidden');
@@ -915,6 +930,32 @@ function isLoggedIn() {
     return auth.currentUser !== null;
 }
 
+// --- PRESENCE TRACKING (HEARTBEAT) ---
+let presenceTimer = null;
+
+async function updateUserPresence() {
+    if (auth.currentUser) {
+        try {
+            await updateDoc(doc(db, "users", auth.currentUser.uid), {
+                lastActive: new Date()
+            });
+        } catch (e) {
+            console.warn("Presence update failed:", e.message);
+        }
+    }
+}
+
+function startPresenceHeartbeat() {
+    if (presenceTimer) clearInterval(presenceTimer);
+    updateUserPresence(); // Run once immediately
+    presenceTimer = setInterval(updateUserPresence, 180000); // Pulse every 3 minutes
+}
+
+function stopPresenceHeartbeat() {
+    if (presenceTimer) clearInterval(presenceTimer);
+    presenceTimer = null;
+}
+
 let isAuthInitialized = false;
 
 // Expose modal opener globally so inline handlers (like Paywall) work
@@ -943,10 +984,13 @@ function setupAuth() {
                 } else {
                     favoritePoseIds = [];
                 }
+                startPresenceHeartbeat();
             } catch (e) {
                 console.error("Failed to load favorites:", e);
+                startPresenceHeartbeat(); // Still start heartbeat if auth worked
             }
         } else {
+            stopPresenceHeartbeat();
             favoritePoseIds = [];
             // If logged out while viewing favorites, switch to 'all'
             if (activeCategory === 'favorites') {
@@ -963,14 +1007,28 @@ function setupAuth() {
         updateHeaderAuthUI();
 
         const onboardingOverlay = document.getElementById('onboardingOverlay');
+        const isGoogleRedirectPending = sessionStorage.getItem('pickpose_google_action');
         
         if (user) {
             onboardingOverlay?.classList.add('hidden');
             document.body.style.overflow = '';
+
+            // Check if there is a pending "What's New" notification for this user
+            if (latestBroadcastData) {
+                const lastSeenVersion = localStorage.getItem('pickpose_last_version');
+                if (latestBroadcastData.version !== lastSeenVersion) {
+                    showWhatsNewModal(latestBroadcastData.message, latestBroadcastData.version);
+                }
+            }
         } else {
-            onboardingOverlay?.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-            if (typeof resetOnboardingCarousel === 'function') resetOnboardingCarousel();
+            // ONLY show onboarding if we aren't currently waiting for a Google Redirect result
+            if (!isGoogleRedirectPending) {
+                onboardingOverlay?.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                if (typeof resetOnboardingCarousel === 'function') resetOnboardingCarousel();
+            } else {
+                console.log("Suppressing onboarding flash: Google Redirect Pending...");
+            }
         }
 
         filterCards(); // Refresh grid with auth state resolved
@@ -1151,6 +1209,89 @@ function setupAuth() {
         errEl.classList.remove('hidden');
     };
 
+    // --- LEGAL MODAL LOGIC ---
+    const legalModal = document.getElementById('legalModal');
+    const legalTitle = document.getElementById('legalTitle');
+    const legalBody = document.getElementById('legalBody');
+    const closeLegalBtn = document.getElementById('closeLegalModal');
+    const closeLegalBtnBottom = document.getElementById('closeLegalModalBtn');
+    const legalModalBg = document.getElementById('legalModalBg');
+
+    const LEGAL_CONTENT = {
+        terms: {
+            title: "Terms of Service",
+            body: `
+                <h4 style="color:var(--gold-accent); margin-top:0;">1. Acceptance of Terms</h4>
+                <p>By accessing Pickpose, you agree to be bound by these terms. If you do not agree, please do not use the service.</p>
+                
+                <h4 style="color:var(--gold-accent);">2. Purpose of Service</h4>
+                <p>Pickpose is a curated gallery for photography poses. Content provided is for inspirational and educational purposes only.</p>
+                
+                <h4 style="color:var(--gold-accent);">3. User Accounts</h4>
+                <p>You are responsible for maintaining the confidentiality of your account credentials. You must provide accurate information during signup.</p>
+                
+                <h4 style="color:var(--gold-accent);">4. Content Usage</h4>
+                <p>All images and content on Pickpose are the property of their respective owners. You may not scrape, redistribute, or use these images for commercial purposes without explicit permission.</p>
+                
+                <h4 style="color:var(--gold-accent);">5. Community Submissions</h4>
+                <p>If you suggest a pose, you grant Pickpose a non-exclusive right to display that content. Admins reserve the right to reject any submission.</p>
+                
+                <h4 style="color:var(--gold-accent);">6. Limitation of Liability</h4>
+                <p>Pickpose is provided "as is". We are not responsible for any physical injury or damage resulting from attempting poses found in the gallery.</p>
+            `
+        },
+        privacy: {
+            title: "Privacy Policy",
+            body: `
+                <h4 style="color:var(--gold-accent); margin-top:0;">1. Information We Collect</h4>
+                <p>We collect your email address and username to provide personalized features like "Favorites" and "Pose Submissions".</p>
+                
+                <h4 style="color:var(--gold-accent);">2. How We Use Data</h4>
+                <p>Your data is used strictly for authentication and account management. We do not sell your personal information to third parties.</p>
+                
+                <h4 style="color:var(--gold-accent);">3. Firebase & Security</h4>
+                <p>We use Google Firebase for secure data storage and authentication. Your passwords are encrypted by Firebase and never visible to us.</p>
+                
+                <h4 style="color:var(--gold-accent);">4. Cookies & Analytics</h4>
+                <p>We use minimal cookies and Google Analytics to understand app performance and improve the user experience.</p>
+                
+                <h4 style="color:var(--gold-accent);">5. Data Deletion</h4>
+                <p>You have the right to request deletion of your account and data at any time by contacting our support team.</p>
+            `
+        }
+    };
+
+    const openLegalModal = (type) => {
+        const content = LEGAL_CONTENT[type];
+        if (!content) return;
+        legalTitle.textContent = content.title;
+        legalBody.innerHTML = content.body;
+        legalModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    };
+
+    const closeLegal = () => {
+        legalModal.classList.add('hidden');
+        if (!document.getElementById('authModal').classList.contains('hidden')) {
+            // Keep body overflow hidden if auth modal is still open
+        } else {
+            document.body.style.overflow = '';
+        }
+    };
+
+    closeLegalBtn?.addEventListener('click', closeLegal);
+    closeLegalBtnBottom?.addEventListener('click', closeLegal);
+    legalModalBg?.addEventListener('click', closeLegal);
+
+    // Global listener for all legal links
+    document.addEventListener('click', (e) => {
+        const link = e.target.closest('.legal-link');
+        if (link) {
+            e.preventDefault();
+            openLegalModal(link.dataset.type);
+        }
+    });
+
     // --- HANDLE REDIRECT RESULT (FOR MOBILE) ---
     getRedirectResult(auth)
         .then(async (result) => {
@@ -1159,16 +1300,31 @@ function setupAuth() {
                 const actionType = sessionStorage.getItem('pickpose_google_action') || 'login';
                 await processGoogleResult(result.user, actionType);
             }
+            // Clear the flag regardless of success/fail once handled
+            sessionStorage.removeItem('pickpose_google_action');
         })
         .catch((error) => {
             console.error("Redirect Auth Error Detail:", error.code, error.message);
-            // Only show error if it's a real failure, not just a cancelled state
-            if (error.code === 'auth/web-storage-unsupported') {
-                showError("Mobile Auth Error: Your browser blocks third-party cookies/storage. Please disable 'Block All Cookies' or 'Secret Mode'.");
-            } else if (error.code === 'auth/unauthorized-domain') {
-                showError("Domain Not Authorized: Please add '" + window.location.hostname + "' to Firebase Authorized Domains.");
-            } else if (error.code !== 'auth/redirect-cancelled-by-user') {
-                showError("Redirect Login failed: " + error.message);
+            sessionStorage.removeItem('pickpose_google_action'); // Clear flag on error too
+            
+            // On redirect errors, we MUST show the modal so the user sees the message
+            if (error.code !== 'auth/redirect-cancelled-by-user') {
+                window.openAuthModal('authModeSelection'); // Open the modal first
+                
+                if (error.code === 'auth/web-storage-unsupported') {
+                    showError("Mobile Auth Error: Your browser blocks third-party cookies/storage. Please disable 'Block All Cookies' or 'Secret Mode'.");
+                } else if (error.code === 'auth/unauthorized-domain') {
+                    showError("Domain Not Authorized: Please add '" + window.location.hostname + "' to Firebase Authorized Domains in Console.");
+                } else {
+                    showError("Redirect Login failed: " + error.message);
+                }
+            } else {
+                // If cancelled, we should show the onboarding since no login is happening
+                const onboardingOverlay = document.getElementById('onboardingOverlay');
+                if (!auth.currentUser) {
+                    onboardingOverlay?.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
             }
         });
 
@@ -1261,19 +1417,19 @@ function setupAuth() {
             } else {
                 // Does not exist, sign them out and show error
                 await signOut(auth);
+                window.openAuthModal('authGoogleChoice'); // Ensure modal is open!
                 showError("Sign Up! You have no account.");
-                showStep('authGoogleChoice');
             }
         } else if (actionType === 'signup') {
             if (snap.exists()) {
                 // Already exists
+                window.openAuthModal('authGoogleChoice'); // Ensure modal is open!
                 showError("Account already exists! Please click 'Log In with Google' instead.", true);
-                showStep('authGoogleChoice');
             } else {
                 // Needs a username! Switch to step 4
                 wizardData.isGoogleSignup = true;
                 wizardData.email = user.email;
-                showStep('authSignupStep4');
+                window.openAuthModal('authSignupStep4'); // Ensure modal is open!
             }
         }
     }
@@ -1298,6 +1454,11 @@ function setupAuth() {
                 if (snap.empty) throw new Error("Username not found.");
                 userEmail = snap.docs[0].data().email;
             }
+
+            // Persistence logic based on "Save Login Info" checkbox
+            const saveInfo = document.getElementById('loginSaveInfo').checked;
+            const persistence = saveInfo ? browserLocalPersistence : browserSessionPersistence;
+            await setPersistence(auth, persistence);
 
             // Execute Login
             await signInWithEmailAndPassword(auth, userEmail, pwd);
@@ -1437,13 +1598,19 @@ function setupAuth() {
             if (!snap.empty) throw new Error("Username already taken! Please pick another.");
 
             if (wizardData.isGoogleSignup && auth.currentUser) {
-                // 2. Google Signup Process (Auth already handled)
+                // For Google, we'll assume persistence is desired or follow a similar flag if we add it globally
+                // But specifically for the final Firestore record creation:
                 await setDoc(doc(db, "users", auth.currentUser.uid), {
                     username: uname,
                     email: auth.currentUser.email,
                     createdAt: new Date()
                 });
             } else {
+                // Persistence logic based on "Save Login Info" checkbox
+                const saveInfo = document.getElementById('signupSaveInfo').checked;
+                const persistence = saveInfo ? browserLocalPersistence : browserSessionPersistence;
+                await setPersistence(auth, persistence);
+
                 // 2. Create Firebase Account for Email Users
                 const newCred = await createUserWithEmailAndPassword(auth, wizardData.email, wizardData.password);
 
