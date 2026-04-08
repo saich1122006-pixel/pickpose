@@ -68,58 +68,6 @@ function getNextId(poses) {
     return Math.max(...poses.map(p => p.id)) + 1;
 }
 
-// --- IMAGE ENHANCEMENT ENGINE ---
-function applySmartEnhance(canvas) {
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // 1. Color Correction (Vibrance, Contrast, Brightness)
-    // We apply these via CSS filters on the canvas context for high performance
-    ctx.filter = 'contrast(1.15) saturate(1.15) brightness(1.03)';
-    ctx.drawImage(canvas, 0, 0);
-    ctx.filter = 'none'; // Reset filter
-
-    // 2. Convolution Sharpening (High Performance 3x3 Matrix)
-    const weights = [0, -1, 0, -1, 5, -1, 0, -1, 0];
-    const side = Math.round(Math.sqrt(weights.length));
-    const halfSide = Math.floor(side / 2);
-    const src = ctx.getImageData(0, 0, w, h);
-    const sw = src.width;
-    const sh = src.height;
-    const srcData = src.data;
-    const dst = ctx.createImageData(w, h);
-    const dstData = dst.data;
-
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            const sy = y;
-            const sx = x;
-            const dstOff = (y * w + x) * 4;
-            let r = 0, g = 0, b = 0;
-
-            for (let cy = 0; cy < side; cy++) {
-                for (let cx = 0; cx < side; cx++) {
-                    const scy = sy + cy - halfSide;
-                    const scx = sx + cx - halfSide;
-                    if (scy >= 0 && scy < sh && scx >= 0 && scx < sw) {
-                        const srcOff = (scy * sw + scx) * 4;
-                        const wt = weights[cy * side + cx];
-                        r += srcData[srcOff] * wt;
-                        g += srcData[srcOff + 1] * wt;
-                        b += srcData[srcOff + 2] * wt;
-                    }
-                }
-            }
-            dstData[dstOff] = r;
-            dstData[dstOff + 1] = g;
-            dstData[dstOff + 2] = b;
-            dstData[dstOff + 3] = srcData[dstOff + 3]; // Keep alpha
-        }
-    }
-    ctx.putImageData(dst, 0, 0);
-}
-
 // ============================================================
 // AUTH
 // ============================================================
@@ -272,26 +220,10 @@ async function updateStats(poses) {
             document.getElementById('statTotalViews').textContent = data.views || 0;
             document.getElementById('statAppInstalls').textContent = data.installs || 0;
         }
-
-        // --- NEW: USER ANALYTICS ---
-        const usersSnap = await getDocs(collection(db, "users"));
-        document.getElementById('statTotalUsers').textContent = usersSnap.size;
-
-        // Online Now (Active in last 5 minutes)
-        const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
-        const qOnline = query(collection(db, "users"), where("lastActive", ">=", fiveMinsAgo));
-        const onlineSnap = await getDocs(qOnline);
-        document.getElementById('statOnlineUsers').textContent = onlineSnap.size;
-
     } catch (e) {
-        console.warn("Error fetching global/user stats:", e);
+        console.warn("Error fetching global stats:", e);
     }
 }
-
-// Auto-refresh user stats every 60 seconds
-setInterval(() => {
-    if (adminPoses.length > 0) updateStats(adminPoses);
-}, 60000);
 
 function populateAdminCategoryFilter() {
     const select = document.getElementById('adminCategoryFilter');
@@ -828,12 +760,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Draw the entire image, scaled but not cropped
                     ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, outW, outH);
 
-                    // Apply Smart Enhance if enabled
-                    const isEnhanceEnabled = document.getElementById('smartEnhanceToggle')?.checked;
-                    if (isEnhanceEnabled) {
-                        applySmartEnhance(canvas);
-                    }
-
                     resolve(canvas.toDataURL('image/jpeg', quality));
                 };
             };
@@ -942,13 +868,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // Draw entire image scaled but not cropped
                     ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, outW, outH);
-
-                    // Apply Smart Enhance if enabled
-                    const isEnhanceEnabled = document.getElementById('smartEnhanceToggle')?.checked;
-                    if (isEnhanceEnabled) {
-                        applySmartEnhance(canvas);
-                    }
-
                     resolve(canvas.toDataURL('image/jpeg', 0.90));
                 } catch (e) {
                     reject(new Error("Image processing failed: " + e.message));

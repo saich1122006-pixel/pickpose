@@ -64,9 +64,9 @@ body {
 .logo-text {
     font-family: 'Syne', sans-serif;
     font-weight: 800;
-    font-size: 1.4rem;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+    font-size: 1.5rem;
+    letter-spacing: -1px;
+    text-transform: lowercase;
     background: linear-gradient(135deg, var(--primary) 0%, #0ea5e9 100%);
     -webkit-background-clip: text;
     background-clip: text;
@@ -485,8 +485,8 @@ body {
 /* Masonry Grid — Pinterest/Unsplash style */
 .poses-grid {
     column-count: 2;
-    column-gap: 2px;
-    padding: 2px;
+    column-gap: 0px;
+    padding: 0px;
     max-width: 1400px;
     margin: 0 auto;
 }
@@ -511,7 +511,7 @@ body {
     position: relative;
     display: inline-block;
     width: 100%;
-    margin: 0 0 2px 0; /* Vertical gap to match column-gap */
+    margin: 0;
     padding: 0;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -540,31 +540,47 @@ body {
 }
 
 
-/* Difficulty Badges on Cards — Glassmorphic Pills */
+/* Difficulty Badges on Cards */
 .difficulty-badge {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
+    bottom: 12px;
+    left: 12px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
     z-index: 5;
-    background: rgba(0, 0, 0, 0.4);
 }
 
-.difficulty-badge.beginner { border-color: rgba(34, 197, 94, 0.3); color: #22c55e; }
-.difficulty-badge.intermediate { border-color: rgba(234, 179, 8, 0.3); color: #eab308; }
-.difficulty-badge.advanced { border-color: rgba(239, 68, 68, 0.3); color: #ef4444; }
+.difficulty-badge.beginner { background: #22c55e; }
+.difficulty-badge.intermediate { background: #eab308; }
+.difficulty-badge.advanced { background: #ef4444; }
 
 .difficulty-label {
-    display: none; /* Text is now inside the badge */
+    position: absolute;
+    bottom: 10px;
+    left: 28px;
+    font-size: 10px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.pose-card:hover .difficulty-label {
+    opacity: 1;
+}
+
+/* Removed old heavy gradient text overlay */
+.pose-info {
+    display: none;
+}
+
+.pose-category {
+    display: none;
 }
 
 .pose-card.hidden {

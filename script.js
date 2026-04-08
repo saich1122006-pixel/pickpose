@@ -910,7 +910,8 @@ function filterCards() {
         card.innerHTML = `
             <div class="image-container">
                 <img src="${pose.images[0]}" alt="${pose.category}" loading="lazy">
-                <div class="difficulty-badge ${difficulty}">${difficulty}</div>
+                <div class="difficulty-badge ${difficulty}"></div>
+                <span class="difficulty-label">${difficulty}</span>
             </div>
         `;
         card.addEventListener('click', () => openModal(pose));
@@ -927,32 +928,6 @@ function renderGrid(data, gridElement) {
 
 function isLoggedIn() {
     return auth.currentUser !== null;
-}
-
-// --- PRESENCE TRACKING (HEARTBEAT) ---
-let presenceTimer = null;
-
-async function updateUserPresence() {
-    if (auth.currentUser) {
-        try {
-            await updateDoc(doc(db, "users", auth.currentUser.uid), {
-                lastActive: new Date()
-            });
-        } catch (e) {
-            console.warn("Presence update failed:", e.message);
-        }
-    }
-}
-
-function startPresenceHeartbeat() {
-    if (presenceTimer) clearInterval(presenceTimer);
-    updateUserPresence(); // Run once immediately
-    presenceTimer = setInterval(updateUserPresence, 180000); // Pulse every 3 minutes
-}
-
-function stopPresenceHeartbeat() {
-    if (presenceTimer) clearInterval(presenceTimer);
-    presenceTimer = null;
 }
 
 let isAuthInitialized = false;
@@ -983,13 +958,10 @@ function setupAuth() {
                 } else {
                     favoritePoseIds = [];
                 }
-                startPresenceHeartbeat();
             } catch (e) {
                 console.error("Failed to load favorites:", e);
-                startPresenceHeartbeat(); // Still start heartbeat if auth worked
             }
         } else {
-            stopPresenceHeartbeat();
             favoritePoseIds = [];
             // If logged out while viewing favorites, switch to 'all'
             if (activeCategory === 'favorites') {
