@@ -910,8 +910,7 @@ function filterCards() {
         card.innerHTML = `
             <div class="image-container">
                 <img src="${pose.images[0]}" alt="${pose.category}" loading="lazy">
-                <div class="difficulty-badge ${difficulty}"></div>
-                <span class="difficulty-label">${difficulty}</span>
+                <div class="difficulty-badge ${difficulty}">${difficulty}</div>
             </div>
         `;
         card.addEventListener('click', () => openModal(pose));
