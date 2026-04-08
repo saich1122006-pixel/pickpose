@@ -27,6 +27,12 @@ let categoryPriority = [];
 let deferredPrompt;
 
 // ============================================================
+// FIX: Flag to block onAuthStateChanged from closing the auth
+// modal while the user is mid-Google-signup (entering username)
+// ============================================================
+let isAwaitingUsername = false;
+
+// ============================================================
 // FIX: latestBroadcastData moved to MODULE SCOPE
 // so setupAuth() and initPickpose() can both access it
 // ============================================================
@@ -902,18 +908,25 @@ function setupAuth() {
         }
 
         isAuthInitialized = true;
-        updateHeaderAuthUI(user);
 
         const onboardingOverlay = document.getElementById('onboardingOverlay');
-        // FIX: Check if we are mid-redirect before showing/hiding onboarding
         const isGoogleRedirectPending = localStorage.getItem('pickpose_google_action');
 
+        // FIX: If waiting for username entry (Google signup step 4),
+        // block all normal auth state handling — btnSignupFinal will take over
+        if (isAwaitingUsername) {
+            filterCards();
+            return;
+        }
+
+        updateHeaderAuthUI(user);
+
         if (user) {
-            // User is logged in — always hide onboarding
+            // User is logged in — hide onboarding, show gallery
             onboardingOverlay?.classList.add('hidden');
+            document.getElementById('authModal')?.classList.add('hidden');
             document.body.style.overflow = '';
 
-            // FIX: latestBroadcastData now accessible (module scope)
             if (latestBroadcastData) {
                 const lastSeenVersion = localStorage.getItem('pickpose_last_version');
                 if (latestBroadcastData.version !== lastSeenVersion) {
@@ -926,7 +939,7 @@ function setupAuth() {
             document.body.style.overflow = 'hidden';
             if (typeof resetOnboardingCarousel === 'function') resetOnboardingCarousel();
         }
-        // If isGoogleRedirectPending is set, do nothing — getRedirectResult below will handle it
+        // If isGoogleRedirectPending is set, do nothing — getRedirectResult handles it
 
         filterCards();
     });
@@ -1113,12 +1126,12 @@ function setupAuth() {
 
                 if (actionType === 'login') {
                     if (snap.exists()) {
-                        // ✅ SUCCESS: valid user returned from redirect
-                        // Do NOT call closeMod() — modal was never opened on this reload
-                        // onAuthStateChanged will fire and handle the UI correctly
+                        // ✅ LOGIN SUCCESS: hide onboarding, show gallery with all icons
                         document.getElementById('onboardingOverlay')?.classList.add('hidden');
+                        document.getElementById('authModal')?.classList.add('hidden');
                         document.body.style.overflow = '';
                         updateHeaderAuthUI(result.user);
+                        filterCards();
                     } else {
                         // No account found — sign out and show error
                         await signOut(auth);
@@ -1131,9 +1144,13 @@ function setupAuth() {
                         window.openAuthModal('authGoogleChoice');
                         showError("Account already exists! Please click 'Log In with Google' instead.", true);
                     } else {
-                        // New signup — needs username
+                        // New signup — must enter username before entering gallery
                         wizardData.isGoogleSignup = true;
                         wizardData.email = result.user.email;
+                        isAwaitingUsername = true; // Block onAuthStateChanged until username is saved
+                        // Keep onboarding hidden, show ONLY the username step modal
+                        document.getElementById('onboardingOverlay')?.classList.add('hidden');
+                        document.body.style.overflow = '';
                         window.openAuthModal('authSignupStep4');
                     }
                 }
@@ -1252,10 +1269,12 @@ function setupAuth() {
 
         if (actionType === 'login') {
             if (snap.exists()) {
+                // ✅ LOGIN SUCCESS: close modal, show gallery with all icons
                 closeMod();
                 document.getElementById('onboardingOverlay')?.classList.add('hidden');
                 document.body.style.overflow = '';
-                updateHeaderAuthUI();
+                updateHeaderAuthUI(user);
+                filterCards();
             } else {
                 await signOut(auth);
                 window.openAuthModal('authGoogleChoice');
@@ -1266,8 +1285,13 @@ function setupAuth() {
                 window.openAuthModal('authGoogleChoice');
                 showError("Account already exists! Please click 'Log In with Google' instead.", true);
             } else {
+                // New signup — must enter username before entering gallery
                 wizardData.isGoogleSignup = true;
                 wizardData.email = user.email;
+                isAwaitingUsername = true; // Block onAuthStateChanged until username is saved
+                // Show ONLY the username step — keep gallery hidden until username saved
+                document.getElementById('onboardingOverlay')?.classList.add('hidden');
+                document.body.style.overflow = '';
                 window.openAuthModal('authSignupStep4');
             }
         }
@@ -1439,10 +1463,16 @@ function setupAuth() {
                 });
             }
 
+            isAwaitingUsername = false; // Username saved — allow auth state to proceed normally
             closeMod();
             document.getElementById('onboardingOverlay')?.classList.add('hidden');
             document.body.style.overflow = '';
-            updateHeaderAuthUI();
+            // Update UI immediately with current user — username is now in Firestore
+            updateHeaderAuthUI(auth.currentUser);
+            // Also set username immediately in drawer without waiting for Firestore read
+            const profileUsernameEl = document.getElementById('profileUsername');
+            if (profileUsernameEl) profileUsernameEl.textContent = uname;
+            filterCards();
         } catch (error) {
             showError("Signup failed: " + error.message);
         }
