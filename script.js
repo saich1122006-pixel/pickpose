@@ -146,6 +146,18 @@ async function loadPosesData() {
 }
 
 async function initPickpose() {
+
+    // Handle Google redirect login (mobile)
+    try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+            console.log("Redirect login success:", result.user);
+            updateHeaderAuthUI(result.user);
+        }
+    } catch (error) {
+        console.error("Redirect login error:", error);
+    }
+
     const grid = document.getElementById('posesGrid');
     const searchInput = document.getElementById('searchInput');
     const filterContainer = document.getElementById('filterContainer');
