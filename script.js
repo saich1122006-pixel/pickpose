@@ -940,56 +940,49 @@ function setupAuth() {
             try {
                 const favRef = doc(db, "user_favorites", user.uid);
                 const snap = await getDoc(favRef);
-                if (snap.exists()) {
-                    favoritePoseIds = snap.data().poses || [];
-                } else {
-                    favoritePoseIds = [];
-                }
+                favoritePoseIds = snap.exists() ? (snap.data().poses || []) : [];
             } catch (e) {
                 console.error("Failed to load favorites:", e);
+                favoritePoseIds = [];
             }
         } else {
             favoritePoseIds = [];
-            // If logged out while viewing favorites, switch to 'all'
+            // Reset to 'all' if logged out while in favorites
             if (activeCategory === 'favorites') {
                 activeCategory = 'all';
                 const filterContainer = document.getElementById('filterContainer');
-                if (filterContainer) {
-                    filterContainer.querySelectorAll('.filter-btn').forEach(btn => {
-                        btn.classList.toggle('active', btn.dataset.filter === 'all');
-                    });
-                }
+                filterContainer?.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.filter === 'all');
+                });
             }
         }
+        
         isAuthInitialized = true;
-        updateHeaderAuthUI();
+        updateHeaderAuthUI(user);
 
         const onboardingOverlay = document.getElementById('onboardingOverlay');
-        const isGoogleRedirectPending = sessionStorage.getItem('pickpose_google_action');
+        const isGoogleRedirectPending = localStorage.getItem('pickpose_google_action');
         
         if (user) {
+            // FORCE hide onboarding if we have a user
             onboardingOverlay?.classList.add('hidden');
             document.body.style.overflow = '';
 
-            // Check if there is a pending "What's New" notification for this user
+            // Check for unread announcements
             if (latestBroadcastData) {
                 const lastSeenVersion = localStorage.getItem('pickpose_last_version');
                 if (latestBroadcastData.version !== lastSeenVersion) {
                     showWhatsNewModal(latestBroadcastData.message, latestBroadcastData.version);
                 }
             }
-        } else {
-            // ONLY show onboarding if we aren't currently waiting for a Google Redirect result
-            if (!isGoogleRedirectPending) {
-                onboardingOverlay?.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-                if (typeof resetOnboardingCarousel === 'function') resetOnboardingCarousel();
-            } else {
-                console.log("Suppressing onboarding flash: Google Redirect Pending...");
-            }
+        } else if (!isGoogleRedirectPending) {
+            // ONLY show onboarding if we aren't waiting for a redirect landing
+            onboardingOverlay?.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            if (typeof resetOnboardingCarousel === 'function') resetOnboardingCarousel();
         }
 
-        filterCards(); // Refresh grid with auth state resolved
+        filterCards();
     });
 
     if (!authModal) return;
@@ -1172,15 +1165,16 @@ function setupAuth() {
         .then(async (result) => {
             if (result && result.user) {
                 console.log("Redirect Auth Success:", result.user.email);
-                const actionType = sessionStorage.getItem('pickpose_google_action') || 'login';
+                const actionType = localStorage.getItem('pickpose_google_action') || 'login';
                 await processGoogleResult(result.user, actionType);
             }
-            // Clear the flag regardless of success/fail once handled
-            sessionStorage.removeItem('pickpose_google_action');
+            // Clear the flag and update UI
+            localStorage.removeItem('pickpose_google_action');
+            updateHeaderAuthUI(auth.currentUser);
         })
         .catch((error) => {
             console.error("Redirect Auth Error Detail:", error.code, error.message);
-            sessionStorage.removeItem('pickpose_google_action'); // Clear flag on error too
+            localStorage.removeItem('pickpose_google_action'); // Clear flag on error too
             
             // On redirect errors, we MUST show the modal so the user sees the message
             if (error.code !== 'auth/redirect-cancelled-by-user') {
@@ -1240,7 +1234,7 @@ function setupAuth() {
 
         try {
             if (isMobile || isStandalone) {
-                sessionStorage.setItem('pickpose_google_action', actionType);
+                localStorage.setItem('pickpose_google_action', actionType);
                 console.log("Attempting Mobile Redirect...");
                 try {
                     await signInWithRedirect(auth, provider);
@@ -1289,6 +1283,7 @@ function setupAuth() {
                 const onboardingOverlay = document.getElementById('onboardingOverlay');
                 onboardingOverlay?.classList.add('hidden');
                 document.body.style.overflow = '';
+                updateHeaderAuthUI();
             } else {
                 // Does not exist, sign them out and show error
                 await signOut(auth);
@@ -1491,6 +1486,7 @@ function setupAuth() {
             const onboardingOverlay = document.getElementById('onboardingOverlay');
             onboardingOverlay?.classList.add('hidden');
             document.body.style.overflow = '';
+            updateHeaderAuthUI();
         } catch (error) {
             showError("Signup failed: " + error.message);
         }
@@ -1498,14 +1494,17 @@ function setupAuth() {
     });
 }
 
-function updateHeaderAuthUI() {
+function updateHeaderAuthUI(explicitUser = null) {
+    const user = explicitUser || auth.currentUser;
+    const isLoggedInUser = user !== null;
+
     const userIcon = document.getElementById('userProfileIcon');
     const btnAbout = document.getElementById('btnAbout');
     const btnContact = document.getElementById('btnContact');
     const btnSubmitPose = document.getElementById('btnSubmitPose');
     const btnSubmitPoseMobile = document.getElementById('btnSubmitPoseMobile');
 
-    if (isLoggedIn()) {
+    if (isLoggedInUser) {
         if (userIcon) userIcon.classList.remove('hidden');
         if (btnSubmitPose) btnSubmitPose.classList.remove('hidden');
         if (btnSubmitPoseMobile) btnSubmitPoseMobile.classList.remove('hidden');
