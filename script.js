@@ -1,19 +1,6 @@
 import { db, auth, analytics, logEvent } from './firebase-config.js';
 import { collection, getDocs, getDoc, setDoc, doc, addDoc, query, where, updateDoc, increment, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    onAuthStateChanged, 
-    signOut, 
-    sendEmailVerification, 
-    GoogleAuthProvider, 
-    signInWithPopup, 
-    signInWithRedirect, 
-    getRedirectResult,
-    setPersistence,
-    browserLocalPersistence,
-    browserSessionPersistence
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 // No default poses — all content managed via admin panel
 const defaultPosesData = [];
 
@@ -1180,89 +1167,6 @@ function setupAuth() {
         errEl.classList.remove('hidden');
     };
 
-    // --- LEGAL MODAL LOGIC ---
-    const legalModal = document.getElementById('legalModal');
-    const legalTitle = document.getElementById('legalTitle');
-    const legalBody = document.getElementById('legalBody');
-    const closeLegalBtn = document.getElementById('closeLegalModal');
-    const closeLegalBtnBottom = document.getElementById('closeLegalModalBtn');
-    const legalModalBg = document.getElementById('legalModalBg');
-
-    const LEGAL_CONTENT = {
-        terms: {
-            title: "Terms of Service",
-            body: `
-                <h4 style="color:var(--gold-accent); margin-top:0;">1. Acceptance of Terms</h4>
-                <p>By accessing Pickpose, you agree to be bound by these terms. If you do not agree, please do not use the service.</p>
-                
-                <h4 style="color:var(--gold-accent);">2. Purpose of Service</h4>
-                <p>Pickpose is a curated gallery for photography poses. Content provided is for inspirational and educational purposes only.</p>
-                
-                <h4 style="color:var(--gold-accent);">3. User Accounts</h4>
-                <p>You are responsible for maintaining the confidentiality of your account credentials. You must provide accurate information during signup.</p>
-                
-                <h4 style="color:var(--gold-accent);">4. Content Usage</h4>
-                <p>All images and content on Pickpose are the property of their respective owners. You may not scrape, redistribute, or use these images for commercial purposes without explicit permission.</p>
-                
-                <h4 style="color:var(--gold-accent);">5. Community Submissions</h4>
-                <p>If you suggest a pose, you grant Pickpose a non-exclusive right to display that content. Admins reserve the right to reject any submission.</p>
-                
-                <h4 style="color:var(--gold-accent);">6. Limitation of Liability</h4>
-                <p>Pickpose is provided "as is". We are not responsible for any physical injury or damage resulting from attempting poses found in the gallery.</p>
-            `
-        },
-        privacy: {
-            title: "Privacy Policy",
-            body: `
-                <h4 style="color:var(--gold-accent); margin-top:0;">1. Information We Collect</h4>
-                <p>We collect your email address and username to provide personalized features like "Favorites" and "Pose Submissions".</p>
-                
-                <h4 style="color:var(--gold-accent);">2. How We Use Data</h4>
-                <p>Your data is used strictly for authentication and account management. We do not sell your personal information to third parties.</p>
-                
-                <h4 style="color:var(--gold-accent);">3. Firebase & Security</h4>
-                <p>We use Google Firebase for secure data storage and authentication. Your passwords are encrypted by Firebase and never visible to us.</p>
-                
-                <h4 style="color:var(--gold-accent);">4. Cookies & Analytics</h4>
-                <p>We use minimal cookies and Google Analytics to understand app performance and improve the user experience.</p>
-                
-                <h4 style="color:var(--gold-accent);">5. Data Deletion</h4>
-                <p>You have the right to request deletion of your account and data at any time by contacting our support team.</p>
-            `
-        }
-    };
-
-    const openLegalModal = (type) => {
-        const content = LEGAL_CONTENT[type];
-        if (!content) return;
-        legalTitle.textContent = content.title;
-        legalBody.innerHTML = content.body;
-        legalModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    };
-
-    const closeLegal = () => {
-        legalModal.classList.add('hidden');
-        if (!document.getElementById('authModal').classList.contains('hidden')) {
-            // Keep body overflow hidden if auth modal is still open
-        } else {
-            document.body.style.overflow = '';
-        }
-    };
-
-    closeLegalBtn?.addEventListener('click', closeLegal);
-    closeLegalBtnBottom?.addEventListener('click', closeLegal);
-    legalModalBg?.addEventListener('click', closeLegal);
-
-    // Global listener for all legal links
-    document.addEventListener('click', (e) => {
-        const link = e.target.closest('.legal-link');
-        if (link) {
-            e.preventDefault();
-            openLegalModal(link.dataset.type);
-        }
-    });
-
     // --- HANDLE REDIRECT RESULT (FOR MOBILE) ---
     getRedirectResult(auth)
         .then(async (result) => {
@@ -1426,11 +1330,6 @@ function setupAuth() {
                 userEmail = snap.docs[0].data().email;
             }
 
-            // Persistence logic based on "Save Login Info" checkbox
-            const saveInfo = document.getElementById('loginSaveInfo').checked;
-            const persistence = saveInfo ? browserLocalPersistence : browserSessionPersistence;
-            await setPersistence(auth, persistence);
-
             // Execute Login
             await signInWithEmailAndPassword(auth, userEmail, pwd);
             closeMod();
@@ -1569,19 +1468,13 @@ function setupAuth() {
             if (!snap.empty) throw new Error("Username already taken! Please pick another.");
 
             if (wizardData.isGoogleSignup && auth.currentUser) {
-                // For Google, we'll assume persistence is desired or follow a similar flag if we add it globally
-                // But specifically for the final Firestore record creation:
+                // 2. Google Signup Process (Auth already handled)
                 await setDoc(doc(db, "users", auth.currentUser.uid), {
                     username: uname,
                     email: auth.currentUser.email,
                     createdAt: new Date()
                 });
             } else {
-                // Persistence logic based on "Save Login Info" checkbox
-                const saveInfo = document.getElementById('signupSaveInfo').checked;
-                const persistence = saveInfo ? browserLocalPersistence : browserSessionPersistence;
-                await setPersistence(auth, persistence);
-
                 // 2. Create Firebase Account for Email Users
                 const newCred = await createUserWithEmailAndPassword(auth, wizardData.email, wizardData.password);
 

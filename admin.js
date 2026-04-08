@@ -1305,45 +1305,6 @@ document.getElementById('btnWhatsAppShare')?.addEventListener('click', () => {
     window.open(url, '_blank');
 });
 
-// --- BROADCAST LOGIC ---
-document.getElementById('btnPushUpdate')?.addEventListener('click', async () => {
-    const msgInput = document.getElementById('updateMessage');
-    const msg = msgInput.value.trim();
-    if (!msg) return alert("Please enter a message to broadcast.");
-
-    const btn = document.getElementById('btnPushUpdate');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Broadcasting...';
-
-    try {
-        const broadcastRef = doc(db, "app_metadata", "broadcast");
-        const snap = await getDoc(broadcastRef);
-        
-        // Auto-increment version if it exists, else start at 1
-        let currentVersion = 0;
-        if (snap.exists() && snap.data().version) {
-            currentVersion = parseInt(snap.data().version) || 0;
-        }
-        const newVersion = (currentVersion + 1).toString();
-
-        await setDoc(broadcastRef, {
-            message: msg,
-            version: newVersion,
-            timestamp: new Date()
-        });
-
-        showToast("Broadcast sent successfully!");
-        msgInput.value = '';
-    } catch (err) {
-        console.error("Broadcast failed:", err);
-        alert("Failed to send broadcast: " + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-    }
-});
-
 // Attach to window as backup (optional but good for compatibility)
 window.approvePose = approvePose;
 window.rejectPose = rejectPose;
