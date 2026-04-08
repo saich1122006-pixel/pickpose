@@ -1,7 +1,6 @@
 import { db, auth, analytics, logEvent } from './firebase-config.js';
-import { collection, getDocs, getDoc, setDoc, doc, addDoc, query, where, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, getDocs, getDoc, setDoc, doc, addDoc, query, where, updateDoc, increment, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendEmailVerification, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
 // No default poses — all content managed via admin panel
 const defaultPosesData = [];
 
@@ -125,42 +124,90 @@ async function initPickpose() {
         }
     }
 
-    // --- BROADCAST / UPDATES ---
-    async function checkForUpdates() {
-        try {
-            const broadcastRef = doc(db, "app_metadata", "broadcast");
-            const snap = await getDoc(broadcastRef);
+    // --- BROADCAST / UPDATES (Real-time) ---
+    let latestBroadcastData = null;
 
+    function setupBroadcastListener() {
+        const broadcastRef = doc(db, "app_metadata", "broadcast");
+        const notificationsBtn = document.getElementById('notificationsBtn');
+        const notificationsBadge = document.getElementById('notificationsBadge');
+        const notificationsBellIcon = document.getElementById('notificationsBellIcon');
+
+        onSnapshot(broadcastRef, (snap) => {
             if (snap.exists()) {
                 const data = snap.data();
+                if (!data.version || !data.message) return;
+                
+                latestBroadcastData = data;
                 const lastSeenVersion = localStorage.getItem('pickpose_last_version');
 
-                if (data.version && data.version !== lastSeenVersion) {
-                    const modal = document.getElementById('whatsNewModal');
-                    const content = document.getElementById('whatsNewContent');
-                    const btn = document.getElementById('closeWhatsNew');
+                if (notificationsBtn) {
+                    notificationsBtn.classList.remove('hidden');
+                }
 
-                    if (modal && content && btn) {
-                        content.innerHTML = data.message.replace(/\n/g, '<br>');
-                        modal.classList.remove('hidden');
-
-                        btn.addEventListener('click', () => {
-                            modal.classList.add('hidden');
-                            localStorage.setItem('pickpose_last_version', data.version);
-                            logEvent(analytics, 'whats_new_dismissed', { version: data.version });
-                        });
-                    }
+                if (data.version !== lastSeenVersion) {
+                    // New unseen update
+                    if (notificationsBadge) notificationsBadge.classList.remove('hidden');
+                    if (notificationsBellIcon) notificationsBellIcon.style.color = '#fff';
+                    
+                    // Show it if it's a fresh load and they haven't seen it yet
+                    // Wait until DOM is fully loaded or call directly if already loaded
+                    showWhatsNewModal(data.message, data.version);
+                } else {
+                    // Already seen
+                    if (notificationsBadge) notificationsBadge.classList.add('hidden');
+                    if (notificationsBellIcon) notificationsBellIcon.style.color = '#a1a1aa';
                 }
             }
-        } catch (err) {
-            console.error("Error checking updates:", err);
+        });
+
+        if (notificationsBtn) {
+            notificationsBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (latestBroadcastData) {
+                    showWhatsNewModal(latestBroadcastData.message, latestBroadcastData.version);
+                } else {
+                    showWhatsNewModal("No new announcements right now! Stay tuned.", null);
+                }
+            });
+        } else {
+            console.error("Pickpose: notificationsBtn NOT FOUND in DOM");
+        }
+    }
+
+    // Call immediately since module scripts are deferred and DOM is ready
+    setupBroadcastListener();
+
+    function showWhatsNewModal(message, version) {
+        const modal = document.getElementById('whatsNewModal');
+        const content = document.getElementById('whatsNewContent');
+        const btn = document.getElementById('closeWhatsNew');
+
+        if (modal && content && btn) {
+            content.innerHTML = message.replace(/\n/g, '<br>');
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            // Clean up previous event listeners by cloning if necessary, or just overwrite
+            btn.onclick = () => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+                if (version) {
+                    localStorage.setItem('pickpose_last_version', version);
+                    logEvent(analytics, 'whats_new_dismissed', { version: version });
+                    
+                    const badge = document.getElementById('notificationsBadge');
+                    const bell = document.getElementById('notificationsBellIcon');
+                    if (badge) badge.classList.add('hidden');
+                    if (bell) bell.style.color = '#a1a1aa';
+                }
+            };
         }
     }
 
     // Initial load check
     document.addEventListener('DOMContentLoaded', async () => {
-        checkForUpdates();
-
         // Load Category Priority for better UX
         try {
             const catRef = doc(db, "app_metadata", "categories");
@@ -1074,6 +1121,11 @@ function setupAuth() {
 
     // Modal Close
     const closeMod = () => {
+        if (auth.currentUser) {
+            getDoc(doc(db, "users", auth.currentUser.uid)).then(snap => {
+                if (!snap.exists()) signOut(auth);
+            }).catch(console.error);
+        }
         authModal.classList.add('hidden');
         document.body.style.overflow = '';
     }
@@ -1104,22 +1156,8 @@ function setupAuth() {
         .then(async (result) => {
             if (result && result.user) {
                 console.log("Redirect Auth Success:", result.user.email);
-                const user = result.user;
-                // Create profile if new
-                const userRef = doc(db, "users", user.uid);
-                const snap = await getDoc(userRef);
-                if (!snap.exists()) {
-                    await setDoc(userRef, {
-                        username: user.email.split('@')[0],
-                        email: user.email,
-                        createdAt: new Date()
-                    });
-                }
-                // Ensure everything is closed and scrolled
-                closeMod();
-                const onboardingOverlay = document.getElementById('onboardingOverlay');
-                onboardingOverlay?.classList.add('hidden');
-                document.body.style.overflow = '';
+                const actionType = sessionStorage.getItem('pickpose_google_action') || 'login';
+                await processGoogleResult(result.user, actionType);
             }
         })
         .catch((error) => {
@@ -1139,15 +1177,28 @@ function setupAuth() {
     document.getElementById('btnGoToSignup').addEventListener('click', () => showStep('authSignupStep1'));
     document.getElementById('btnBackToMenuLogin')?.addEventListener('click', () => showStep('authModeSelection'));
     document.getElementById('btnBackToMenuSignup')?.addEventListener('click', () => showStep('authModeSelection'));
+    document.getElementById('btnBackToMenuGoogle')?.addEventListener('click', () => showStep('authModeSelection'));
 
-    // --- GOOGLE LOGIN ---
-    document.getElementById('btnGoogleLogin').addEventListener('click', async () => {
+    document.getElementById('btnGoogleLogin').addEventListener('click', () => showStep('authGoogleChoice'));
+
+    // --- GOOGLE EXISTING LOGIN ---
+    document.getElementById('btnGoogleExistingLogin').addEventListener('click', async () => {
+        await handleGoogleAction('login');
+    });
+
+    // --- GOOGLE NEW SIGNUP ---
+    document.getElementById('btnGoogleNewSignup').addEventListener('click', async () => {
+        await handleGoogleAction('signup');
+    });
+
+    async function handleGoogleAction(actionType) {
         const provider = new GoogleAuthProvider();
         provider.addScope('profile');
         provider.addScope('email');
 
         showError("", true);
-        const btn = document.getElementById('btnGoogleLogin');
+        const btnId = actionType === 'login' ? 'btnGoogleExistingLogin' : 'btnGoogleNewSignup';
+        const btn = document.getElementById(btnId);
         const originalHtml = btn.innerHTML;
 
         btn.disabled = true;
@@ -1158,19 +1209,19 @@ function setupAuth() {
 
         try {
             if (isMobile || isStandalone) {
+                sessionStorage.setItem('pickpose_google_action', actionType);
                 console.log("Attempting Mobile Redirect...");
                 try {
                     await signInWithRedirect(auth, provider);
                 } catch (redirectError) {
                     console.warn("Redirect failed, attempting Popup fallback...", redirectError);
-                    // Fallback to popup if redirect is blocked (e.g. some Safari settings)
                     const result = await signInWithPopup(auth, provider);
-                    handleGoogleAuthSuccess(result.user);
+                    await processGoogleResult(result.user, actionType);
                 }
             } else {
                 console.log("Attempting Desktop Popup...");
                 const result = await signInWithPopup(auth, provider);
-                handleGoogleAuthSuccess(result.user);
+                await processGoogleResult(result.user, actionType);
             }
         } catch (error) {
             console.error("Google Auth Error Detail:", error.code, error.message);
@@ -1189,23 +1240,45 @@ function setupAuth() {
             }
 
             showError("Google Sign-In failed: " + userMsg);
+        }
+        if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalHtml;
         }
-    });
+    }
 
-    async function handleGoogleAuthSuccess(user) {
+    async function processGoogleResult(user, actionType) {
         const userRef = doc(db, "users", user.uid);
         const snap = await getDoc(userRef);
-        if (!snap.exists()) {
-            await setDoc(userRef, {
-                username: user.email.split('@')[0],
-                email: user.email,
-                createdAt: new Date()
-            });
+        
+        if (actionType === 'login') {
+            if (snap.exists()) {
+                // Success, let them in
+                closeMod();
+                const onboardingOverlay = document.getElementById('onboardingOverlay');
+                onboardingOverlay?.classList.add('hidden');
+                document.body.style.overflow = '';
+            } else {
+                // Does not exist, sign them out and show error
+                await signOut(auth);
+                showError("Sign Up! You have no account.");
+                showStep('authGoogleChoice');
+            }
+        } else if (actionType === 'signup') {
+            if (snap.exists()) {
+                // Already exists
+                showError("Account already exists! Please click 'Log In with Google' instead.", true);
+                showStep('authGoogleChoice');
+            } else {
+                // Needs a username! Switch to step 4
+                wizardData.isGoogleSignup = true;
+                wizardData.email = user.email;
+                showStep('authSignupStep4');
+            }
         }
-        closeMod();
     }
+
+
     // --- LOGIN FLOW ---
     document.getElementById('btnLoginSubmit').addEventListener('click', async () => {
         const identifier = document.getElementById('loginIdentifier').value.trim();
@@ -1230,7 +1303,11 @@ function setupAuth() {
             await signInWithEmailAndPassword(auth, userEmail, pwd);
             closeMod();
         } catch (error) {
-            showError("Login failed: " + error.message);
+            let msg = error.message;
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || msg === "Username not found.") {
+                msg = "Sign Up! You have no account.";
+            }
+            showError("Login failed: " + msg);
         }
         btn.disabled = false; btn.textContent = "Log In";
     });
@@ -1359,17 +1436,30 @@ function setupAuth() {
             const snap = await getDocs(q);
             if (!snap.empty) throw new Error("Username already taken! Please pick another.");
 
-            // 2. Create Firebase Account
-            const newCred = await createUserWithEmailAndPassword(auth, wizardData.email, wizardData.password);
+            if (wizardData.isGoogleSignup && auth.currentUser) {
+                // 2. Google Signup Process (Auth already handled)
+                await setDoc(doc(db, "users", auth.currentUser.uid), {
+                    username: uname,
+                    email: auth.currentUser.email,
+                    createdAt: new Date()
+                });
+            } else {
+                // 2. Create Firebase Account for Email Users
+                const newCred = await createUserWithEmailAndPassword(auth, wizardData.email, wizardData.password);
 
-            // 3. Save to Firestore
-            await setDoc(doc(db, "users", newCred.user.uid), {
-                username: uname,
-                email: wizardData.email,
-                createdAt: new Date()
-            });
+                // 3. Save to Firestore
+                await setDoc(doc(db, "users", newCred.user.uid), {
+                    username: uname,
+                    email: wizardData.email,
+                    createdAt: new Date()
+                });
+            }
 
+            // Successfully fully established an account
             closeMod();
+            const onboardingOverlay = document.getElementById('onboardingOverlay');
+            onboardingOverlay?.classList.add('hidden');
+            document.body.style.overflow = '';
         } catch (error) {
             showError("Signup failed: " + error.message);
         }

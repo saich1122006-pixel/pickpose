@@ -13,11 +13,20 @@
     <link rel="apple-touch-icon" href="images/pickpose-logo.png">
 
     <!-- SEO & Social Media Open Graph Tags -->
-    <meta name="description" content="A curated gallery of modern, stylish, and cultural photography poses.">
-    <meta property="og:title" content="Pickpose | Albums">
-    <meta property="og:description" content="A curated gallery of modern, stylish, and cultural photography poses.">
-    <meta property="og:image" content="images/pickpose-logo.png">
+    <meta name="description" content="Discover, save, and share the perfect poses for your next photoshoot. The ultimate curated gallery for modern photography.">
+    
+    <!-- Facebook & General OpenGraph -->
+    <meta property="og:title" content="Pickpose | The Perfect Pose Gallery">
+    <meta property="og:description" content="Discover, save, and share the perfect poses for your next photoshoot. The ultimate curated gallery for modern photography.">
+    <meta property="og:image" content="https://pickpose.app/images/pickpose-logo.png">
+    <meta property="og:url" content="https://pickpose.app/">
     <meta property="og:type" content="website">
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Pickpose | The Perfect Pose Gallery">
+    <meta name="twitter:description" content="Discover, save, and share the perfect poses for your next photoshoot.">
+    <meta name="twitter:image" content="https://pickpose.app/images/pickpose-logo.png">
 
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700&family=Syne:wght@700;800&display=swap"
@@ -165,6 +174,10 @@
         </div>
 
         <div class="nav-right" id="navRightAuth" style="display: flex; align-items: center; gap: 15px;">
+            <button type="button" id="notificationsBtn" class="nav-icon-link" title="Notifications" style="position:relative; cursor:pointer; background:none; border:none; padding:0;">
+                <i class="fa-solid fa-bell" id="notificationsBellIcon" style="font-size:1.25rem; color:#a1a1aa; transition: color 0.3s ease; pointer-events: none;"></i>
+                <span id="notificationsBadge" class="hidden" style="position:absolute; top:-4px; right:-6px; background:#a020f0; color:#fff; border-radius:50%; width:14px; height:14px; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:bold; border: 2px solid #0a0a0a; pointer-events: none;">!</span>
+            </button>
             <!-- User Profile Icon dynamically shown when logged in -->
             <button id="btnSubmitPoseMobile" class="nav-icon-link hidden" title="Add Pose"
                 style="background: none; border: none; padding: 0;">
@@ -467,6 +480,20 @@
                     <button id="btnGoToSignup" class="btn-outline">Create New Account</button>
                 </div>
 
+                <!-- GOOGLE SELECTION STEP -->
+                <div id="authGoogleChoice" class="auth-step hidden">
+                    <p class="auth-desc">Are you logging in or creating a new account?</p>
+                    <button id="btnGoogleExistingLogin" class="btn-primary" style="margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        Log In with Google
+                    </button>
+                    <button id="btnGoogleNewSignup" class="btn-outline" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        Sign Up with Google
+                    </button>
+                    <button class="btn-link" id="btnBackToMenuGoogle"
+                        style="background: none; border: none; color: #8888a0; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px;">&larr;
+                        Back to Menu</button>
+                </div>
+
                 <!-- LOGIN TAB -->
                 <div id="authStepLogin" class="auth-step hidden">
                     <p class="auth-desc">Log into Pickpose.</p>
@@ -554,7 +581,7 @@
                 <i class="fa-solid fa-wand-magic-sparkles"></i>
             </div>
             <h2 id="whatsNewTitle"
-                style="font-size: 26px; margin-bottom: 16px; font-weight: 700; background: linear-gradient(135deg, #fff 0%, #c8a03c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                style="font-size: 26px; margin-bottom: 16px; font-weight: 700; background: linear-gradient(135deg, #fff 0%, #c8a03c 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
                 What's New!</h2>
             <div id="whatsNewContent" class="whats-new-body"
                 style="font-size: 16px; color: var(--text-muted); line-height: 1.7; margin-bottom: 32px; text-align: left; padding: 0 10px;">
@@ -840,6 +867,7 @@
                 <h3 style="font-family: 'Syne', sans-serif; font-weight: 800; letter-spacing: -0.5px;">Install pickpose
                     App</h3>
                 <p>Add to your home screen for a faster, full-screen experience.</p>
+                <p style="font-size: 0.75rem; color: var(--gold-accent); margin-top: 4px; font-weight: 600;">Developer: SAI CHADARASIPALLI</p>
             </div>
             <div class="pwa-actions">
                 <button id="btnPwaClose" class="btn-pwa-secondary">Later</button>
