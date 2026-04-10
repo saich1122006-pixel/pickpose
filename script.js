@@ -1218,44 +1218,49 @@ function setupAuth() {
         btn.disabled = true;
         btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Connecting...`;
 
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-
         try {
-            if (isMobile || isStandalone) {
-                // FIX: Set the action flag BEFORE calling signInWithRedirect
-                // so getRedirectResult knows what to do when user returns
-                localStorage.setItem('pickpose_google_action', actionType);
-                console.log("Attempting Mobile Redirect for action:", actionType);
+            // ============================================================
+            // FIX: Use signInWithPopup on ALL platforms (desktop + mobile).
+            // Popup keeps the page alive — no state loss, no redirect issues.
+            // If popup is blocked, fall back to signInWithRedirect.
+            // ============================================================
+            console.log("Attempting Popup for action:", actionType);
+            const result = await signInWithPopup(auth, provider);
+            await processGoogleResult(result.user, actionType);
+        } catch (error) {
+            console.warn("Popup attempt result:", error.code, error.message);
+
+            if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+                // Popup was blocked or closed — try redirect as last resort
+                console.log("Popup unavailable, falling back to Redirect for action:", actionType);
                 try {
+                    localStorage.setItem('pickpose_google_action', actionType);
                     await signInWithRedirect(auth, provider);
                     // Page will redirect away — code below will not run
+                    return;
                 } catch (redirectError) {
-                    console.warn("Redirect failed, attempting Popup fallback...", redirectError);
-                    localStorage.removeItem('pickpose_google_action'); // Clear flag if falling back to popup
-                    const result = await signInWithPopup(auth, provider);
-                    await processGoogleResult(result.user, actionType);
+                    console.error("Redirect also failed:", redirectError);
+                    localStorage.removeItem('pickpose_google_action');
+                    showError("Google Sign-In failed: Could not open Google login. Please allow pop-ups for this site.");
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }
+                    return;
                 }
-            } else {
-                console.log("Attempting Desktop Popup...");
-                const result = await signInWithPopup(auth, provider);
-                await processGoogleResult(result.user, actionType);
             }
-        } catch (error) {
+
+            // All other errors
             console.error("Google Auth Error:", error.code, error.message);
-            localStorage.removeItem('pickpose_google_action'); // Clear flag on error
+            localStorage.removeItem('pickpose_google_action');
             let userMsg = error.message;
 
-            if (error.code === 'auth/popup-blocked') {
-                userMsg = "Pop-up blocked! Please allow pop-ups for this site or try a different browser.";
-            } else if (error.code === 'auth/web-storage-unsupported') {
+            if (error.code === 'auth/web-storage-unsupported') {
                 userMsg = "Storage not supported. Please disable 'Private/Incognito' mode or enable cookies.";
             } else if (error.code === 'auth/operation-not-allowed') {
                 userMsg = "Google login is currently disabled in Firebase Console.";
             } else if (error.code === 'auth/unauthorized-domain') {
                 userMsg = `Domain Not Authorized: Add '${window.location.hostname}' to Firebase Authorized Domains.`;
-            } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
-                userMsg = "Login cancelled.";
             }
 
             showError("Google Sign-In failed: " + userMsg);
@@ -1266,7 +1271,7 @@ function setupAuth() {
         }
     }
 
-    // Used by DESKTOP popup flow and popup fallback
+    // Used by popup flow (all platforms) and redirect fallback
     async function processGoogleResult(user, actionType) {
         const userRef = doc(db, "users", user.uid);
         const snap = await getDoc(userRef);
